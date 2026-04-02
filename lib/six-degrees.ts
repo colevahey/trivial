@@ -23,7 +23,7 @@ async function getMovieActorIds(
   castCache: Map<number, { id: number; name: string; profile_path: string | null }[]>
 ): Promise<{ id: number; name: string; profile_path: string | null }[]> {
   if (castCache.has(movieId)) return castCache.get(movieId)!
-  const cast = await getMovieCredits(movieId)
+  const { cast } = await getMovieCredits(movieId)
   const limited = cast.slice(0, 15).map(c => ({
     id: c.id,
     name: c.name,
