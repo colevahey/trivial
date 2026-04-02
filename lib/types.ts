@@ -15,6 +15,11 @@ export interface Movie {
   release_date: string
   vote_average: number
   revenue: number
+  budget?: number
+  runtime?: number | null
+  tagline?: string
+  director?: string
+  directorId?: number
   genre_ids: number[]
   genres?: Genre[]
   overview: string
@@ -56,6 +61,8 @@ export interface SearchResult {
   profile_path: string | null
   known_for_department: string
   popularity: number
+  mediaType?: 'person' | 'movie'
+  year?: string
 }
 
 export interface CoStarNode {

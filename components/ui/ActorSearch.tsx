@@ -9,9 +9,10 @@ interface ActorSearchProps {
   onSelect: (actor: SearchResult) => void
   placeholder?: string
   className?: string
+  personOnly?: boolean
 }
 
-export function ActorSearch({ onSelect, placeholder = 'Search for an actor...', className = '' }: ActorSearchProps) {
+export function ActorSearch({ onSelect, placeholder = 'Search for an actor...', className = '', personOnly = false }: ActorSearchProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -30,7 +31,8 @@ export function ActorSearch({ onSelect, placeholder = 'Search for an actor...', 
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
       const data = await res.json()
-      setResults(data.results ?? [])
+      const all: SearchResult[] = data.results ?? []
+      setResults(personOnly ? all.filter(r => r.mediaType !== 'movie') : all)
       setIsOpen(true)
       setActiveIndex(-1)
     } catch {
@@ -107,37 +109,48 @@ export function ActorSearch({ onSelect, placeholder = 'Search for an actor...', 
 
       {isOpen && results.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl overflow-hidden">
-          {results.map((actor, i) => (
-            <button
-              key={actor.id}
-              onClick={() => handleSelect(actor)}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                i === activeIndex ? 'bg-zinc-700' : 'hover:bg-zinc-800'
-              }`}
-            >
-              <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-zinc-700">
-                {actor.profile_path ? (
-                  <Image
-                    src={`${TMDB_IMAGE_BASE}${actor.profile_path}`}
-                    alt={actor.name}
-                    width={40}
-                    height={40}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-zinc-500">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
+          {results.map((result, i) => {
+            const isMovie = result.mediaType === 'movie'
+            return (
+              <button
+                key={`${result.mediaType ?? 'person'}-${result.id}`}
+                onClick={() => handleSelect(result)}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                  i === activeIndex ? 'bg-zinc-700' : 'hover:bg-zinc-800'
+                }`}
+              >
+                <div className={`flex-shrink-0 w-10 overflow-hidden bg-zinc-700 ${isMovie ? 'h-14 rounded' : 'h-10 rounded-full'}`}>
+                  {result.profile_path ? (
+                    <Image
+                      src={`${TMDB_IMAGE_BASE}${result.profile_path}`}
+                      alt={result.name}
+                      width={40}
+                      height={isMovie ? 56 : 40}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-zinc-500">
+                      {isMovie ? (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-white font-medium text-sm">{result.name}</div>
+                  <div className="text-zinc-500 text-xs">
+                    {isMovie ? (result.year ? `Film · ${result.year}` : 'Film') : result.known_for_department}
                   </div>
-                )}
-              </div>
-              <div>
-                <div className="text-white font-medium text-sm">{actor.name}</div>
-                <div className="text-zinc-500 text-xs">{actor.known_for_department}</div>
-              </div>
-            </button>
-          ))}
+                </div>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

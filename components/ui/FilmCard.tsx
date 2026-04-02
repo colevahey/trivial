@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb'
 import type { Movie } from '@/lib/types'
 
@@ -9,26 +10,28 @@ interface FilmCardProps {
   onClick?: () => void
   selected?: boolean
   showCharacter?: boolean
+  href?: string
 }
 
-export function FilmCard({ movie, onClick, selected, showCharacter = false }: FilmCardProps) {
+export function FilmCard({ movie, onClick, selected, showCharacter = false, href }: FilmCardProps) {
   const year = movie.release_date ? new Date(movie.release_date).getFullYear() : null
 
-  return (
+  const card = (
     <div
       onClick={onClick}
-      className={`group relative bg-zinc-900 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 ${
+      className={`group relative bg-zinc-900 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 flex flex-col h-full ${
         selected
           ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-900/30 scale-[1.02]'
           : 'hover:ring-1 hover:ring-zinc-600 hover:scale-[1.02]'
       }`}
     >
-      <div className="aspect-[2/3] relative bg-zinc-800">
+      <div className="aspect-[2/3] relative bg-zinc-800 overflow-hidden">
         {movie.poster_path ? (
           <Image
             src={`${TMDB_IMAGE_BASE}${movie.poster_path}`}
             alt={movie.title}
             fill
+            sizes="(max-width: 640px) 33vw, (max-width: 1024px) 16vw, 12vw"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
@@ -63,7 +66,7 @@ export function FilmCard({ movie, onClick, selected, showCharacter = false }: Fi
       </div>
 
       <div className="p-2.5">
-        <div className="text-white text-xs font-semibold leading-tight line-clamp-2">{movie.title}</div>
+        <div className="text-white text-xs font-semibold leading-tight line-clamp-2 min-h-[2rem]">{movie.title}</div>
         <div className="flex items-center gap-1.5 mt-1">
           {year && <span className="text-zinc-500 text-xs">{year}</span>}
           {movie.revenue > 0 && (
@@ -78,4 +81,7 @@ export function FilmCard({ movie, onClick, selected, showCharacter = false }: Fi
       </div>
     </div>
   )
+
+  if (href) return <Link href={href}>{card}</Link>
+  return card
 }

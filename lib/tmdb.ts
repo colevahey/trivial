@@ -1,18 +1,15 @@
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500'
 
-function getHeaders() {
+function getApiKey() {
   const key = process.env.TMDB_API_KEY
   if (!key) throw new Error('TMDB_API_KEY is not set')
-  return {
-    Authorization: `Bearer ${key}`,
-    'Content-Type': 'application/json',
-  }
+  return key
 }
 
 async function tmdbFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${TMDB_BASE}${path}`, {
-    headers: getHeaders(),
+  const sep = path.includes('?') ? '&' : '?'
+  const res = await fetch(`${TMDB_BASE}${path}${sep}api_key=${getApiKey()}`, {
     next: { revalidate: 3600 },
   })
   if (!res.ok) {
@@ -52,6 +49,19 @@ export interface TMDBMovieCredit {
   overview: string
 }
 
+export interface TMDBCrewCredit {
+  id: number
+  title: string
+  poster_path: string | null
+  release_date: string
+  vote_average: number
+  revenue: number
+  genre_ids: number[]
+  overview: string
+  job: string
+  department: string
+}
+
 export interface TMDBMovieDetail {
   id: number
   title: string
@@ -59,6 +69,9 @@ export interface TMDBMovieDetail {
   release_date: string
   vote_average: number
   revenue: number
+  budget: number
+  runtime: number | null
+  tagline: string
   genre_ids: number[]
   genres: { id: number; name: string }[]
   overview: string
@@ -72,11 +85,48 @@ export interface TMDBCastMember {
   order: number
 }
 
+export interface TMDBCrewMember {
+  id: number
+  name: string
+  job: string
+  department: string
+  profile_path: string | null
+}
+
+export interface TMDBMultiResult {
+  id: number
+  media_type: 'person' | 'movie' | 'tv'
+  name?: string
+  title?: string
+  profile_path?: string | null
+  poster_path?: string | null
+  known_for_department?: string
+  popularity: number
+  release_date?: string
+}
+
 export async function searchPersons(query: string): Promise<TMDBSearchPersonResult[]> {
   const data = await tmdbFetch<{ results: TMDBSearchPersonResult[] }>(
     `/search/person?query=${encodeURIComponent(query)}&include_adult=false`
   )
   return data.results
+}
+
+export async function searchMulti(query: string) {
+  const data = await tmdbFetch<{ results: TMDBMultiResult[] }>(
+    `/search/multi?query=${encodeURIComponent(query)}&include_adult=false`
+  )
+  return data.results
+    .filter(r => r.media_type === 'person' || r.media_type === 'movie')
+    .map(r => ({
+      id: r.id,
+      name: r.media_type === 'movie' ? (r.title ?? '') : (r.name ?? ''),
+      profile_path: r.media_type === 'movie' ? (r.poster_path ?? null) : (r.profile_path ?? null),
+      known_for_department: r.media_type === 'movie' ? 'Movie' : (r.known_for_department ?? 'Acting'),
+      popularity: r.popularity,
+      mediaType: r.media_type as 'person' | 'movie',
+      year: r.release_date ? r.release_date.substring(0, 4) : undefined,
+    }))
 }
 
 export async function getPersonDetail(id: number): Promise<TMDBPersonDetail> {
@@ -88,11 +138,21 @@ export async function getPersonMovieCredits(id: number): Promise<TMDBMovieCredit
   return data.cast
 }
 
+export async function getPersonDirectingCredits(id: number): Promise<TMDBCrewCredit[]> {
+  const data = await tmdbFetch<{ crew: TMDBCrewCredit[] }>(`/person/${id}/movie_credits`)
+  return data.crew.filter(c => c.job === 'Director')
+}
+
 export async function getMovieDetail(id: number): Promise<TMDBMovieDetail> {
   return tmdbFetch<TMDBMovieDetail>(`/movie/${id}`)
 }
 
-export async function getMovieCredits(id: number): Promise<TMDBCastMember[]> {
-  const data = await tmdbFetch<{ cast: TMDBCastMember[] }>(`/movie/${id}/credits`)
-  return data.cast
+export async function getMovieCredits(id: number): Promise<{ cast: TMDBCastMember[]; crew: TMDBCrewMember[] }> {
+  return tmdbFetch<{ cast: TMDBCastMember[]; crew: TMDBCrewMember[] }>(`/movie/${id}/credits`)
+}
+
+export async function getMovieDirector(id: number): Promise<{ name: string; id: number } | null> {
+  const { crew } = await getMovieCredits(id)
+  const director = crew.find(c => c.job === 'Director')
+  return director ? { name: director.name, id: director.id } : null
 }

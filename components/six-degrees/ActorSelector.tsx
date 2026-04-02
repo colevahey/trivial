@@ -53,6 +53,7 @@ export function ActorSelector({ label, selected, onSelect, onClear }: ActorSelec
         <ActorSearch
           onSelect={onSelect}
           placeholder={`Search ${label.toLowerCase()}...`}
+          personOnly
         />
       )}
     </div>

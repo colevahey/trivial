@@ -12,8 +12,8 @@ export async function GET(
   }
 
   try {
-    const cast = await getMovieCredits(movieId)
-    return NextResponse.json({ cast })
+    const { cast, crew } = await getMovieCredits(movieId)
+    return NextResponse.json({ cast, crew })
   } catch (error) {
     console.error('Movie credits error:', error)
     return NextResponse.json({ error: 'Failed to fetch movie credits' }, { status: 500 })

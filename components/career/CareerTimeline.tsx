@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import {
   ScatterChart,
   Scatter,
@@ -9,6 +10,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  ReferenceArea,
+  ReferenceLine,
 } from 'recharts'
 import type { Movie } from '@/lib/types'
 
@@ -22,6 +25,7 @@ interface DataPoint {
   revenue: number
   title: string
   id: number
+  director?: string
 }
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: DataPoint }> }) {
@@ -35,11 +39,17 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
       {d.revenue > 0 && (
         <div className="text-zinc-400 text-xs">Box Office: ${(d.revenue / 1_000_000).toFixed(0)}M</div>
       )}
+      {d.director && (
+        <div className="text-zinc-500 text-xs mt-1">Dir. {d.director}</div>
+      )}
+      <div className="text-zinc-600 text-xs mt-1">Click to view film</div>
     </div>
   )
 }
 
 export function CareerTimeline({ credits }: CareerTimelineProps) {
+  const router = useRouter()
+
   const data: DataPoint[] = credits
     .filter(m => m.release_date && m.vote_average > 0)
     .map(m => ({
@@ -48,6 +58,7 @@ export function CareerTimeline({ credits }: CareerTimelineProps) {
       revenue: m.revenue || 0,
       title: m.title,
       id: m.id,
+      director: m.director,
     }))
     .sort((a, b) => a.year - b.year)
 
@@ -85,8 +96,18 @@ export function CareerTimeline({ credits }: CareerTimelineProps) {
             tickLine={{ stroke: '#3f3f46' }}
             label={{ value: 'Rating', angle: -90, position: 'insideLeft', fill: '#71717a', fontSize: 11 }}
           />
-          <Tooltip content={<CustomTooltip />} />
-          <Scatter data={data} fillOpacity={0.85}>
+          <ReferenceArea y1={7} y2={10} fill="#f59e0b" fillOpacity={0.08} />
+          <ReferenceArea y1={5} y2={7} fill="#6366f1" fillOpacity={0.06} />
+          <ReferenceArea y1={0} y2={5} fill="#52525b" fillOpacity={0.06} />
+          <ReferenceLine y={7} stroke="#f59e0b" strokeDasharray="4 4" strokeOpacity={0.3} />
+          <ReferenceLine y={5} stroke="#6366f1" strokeDasharray="4 4" strokeOpacity={0.3} />
+          <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
+          <Scatter
+            data={data}
+            fillOpacity={0.85}
+            cursor="pointer"
+            onClick={(payload: DataPoint) => router.push(`/movie/${payload.id}`)}
+          >
             {data.map((entry, index) => {
               const size = maxRevenue > 0 ? 4 + (entry.revenue / maxRevenue) * 16 : 6
               return (

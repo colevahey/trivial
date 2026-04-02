@@ -1,38 +1,44 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ActorSearch } from '@/components/ui/ActorSearch'
 import { ActorCard } from '@/components/ui/ActorCard'
-import type { SearchResult } from '@/lib/types'
+import type { Actor, SearchResult } from '@/lib/types'
 
-const FEATURED_ACTORS: SearchResult[] = [
-  { id: 287, name: 'Brad Pitt', profile_path: '/kU3B75TyRiCgE270EyZnHjfivoq.jpg', known_for_department: 'Acting', popularity: 50 },
-  { id: 6193, name: 'Leonardo DiCaprio', profile_path: '/wo2hJpn04vbtmh0B9utCFdsQhxM.jpg', known_for_department: 'Acting', popularity: 52 },
-  { id: 1245, name: 'Scarlett Johansson', profile_path: '/6NsMbJXRlDZuDzatN2akFdGuTvx.jpg', known_for_department: 'Acting', popularity: 48 },
-  { id: 3223, name: 'Robert Downey Jr.', profile_path: '/im9SAqJPZKEbVZGmjXuLI4O7RvM.jpg', known_for_department: 'Acting', popularity: 45 },
-  { id: 2524, name: 'Tom Hanks', profile_path: '/xndWFsBlClOJFRdhSt4NBwiPq2o.jpg', known_for_department: 'Acting', popularity: 44 },
-  { id: 1283, name: 'Meryl Streep', profile_path: '/5GnkCR3qiDmLwq0GkO9FOHKB3kL.jpg', known_for_department: 'Acting', popularity: 38 },
-  { id: 1327, name: 'Denzel Washington', profile_path: '/jj2Gcobpopokal0YstuCQW0ldaer.jpg', known_for_department: 'Acting', popularity: 40 },
-  { id: 500, name: 'Tom Cruise', profile_path: '/8qBylBsQf4llkGrWR3qAsOtOU8O.jpg', known_for_department: 'Acting', popularity: 42 },
-]
+const FEATURED_IDS = [287, 6193, 1245, 3223, 2524, 1283, 1327, 500]
 
 export default function HomePage() {
   const router = useRouter()
   const [recentSearches, setRecentSearches] = useState<SearchResult[]>([])
+  const [featuredActors, setFeaturedActors] = useState<Actor[]>([])
 
-  function handleSelect(actor: SearchResult) {
+  useEffect(() => {
+    Promise.allSettled(FEATURED_IDS.map(id => fetch(`/api/actor/${id}`).then(r => r.json())))
+      .then(results => {
+        setFeaturedActors(
+          results.flatMap(r => (r.status === 'fulfilled' && r.value?.id ? [r.value as Actor] : []))
+        )
+      })
+  }, [])
+
+  function handleSelect(result: SearchResult) {
     setRecentSearches(prev => {
-      const without = prev.filter(a => a.id !== actor.id)
-      return [actor, ...without].slice(0, 4)
+      const without = prev.filter(a => a.id !== result.id)
+      return [result, ...without].slice(0, 4)
     })
-    router.push(`/actor/${actor.id}`)
+    if (result.mediaType === 'movie') {
+      router.push(`/movie/${result.id}`)
+    } else {
+      const route = result.known_for_department === 'Directing' ? 'director' : 'actor'
+      router.push(`/${route}/${result.id}`)
+    }
   }
 
   return (
     <div className="flex-1 flex flex-col">
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-zinc-900 to-zinc-950 border-b border-zinc-800/60">
+      <div className="relative bg-gradient-to-b from-zinc-900 to-zinc-950 border-b border-zinc-800/60">
         {/* Background film strip decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -right-20 top-0 bottom-0 w-64 opacity-[0.03]">
@@ -74,7 +80,7 @@ export default function HomePage() {
           <div className="max-w-lg mx-auto">
             <ActorSearch
               onSelect={handleSelect}
-              placeholder="Search any actor or actress..."
+              placeholder="Search actors, directors, or films..."
               className="w-full"
             />
           </div>
@@ -85,7 +91,7 @@ export default function HomePage() {
               {recentSearches.map(a => (
                 <button
                   key={a.id}
-                  onClick={() => router.push(`/actor/${a.id}`)}
+                  onClick={() => router.push(`/${a.known_for_department === 'Directing' ? 'director' : 'actor'}/${a.id}`)}
                   className="text-xs text-zinc-400 hover:text-amber-400 bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full transition-colors"
                 >
                   {a.name}
@@ -162,13 +168,18 @@ export default function HomePage() {
             <span className="text-zinc-500 text-sm">Click to explore their career</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
-            {FEATURED_ACTORS.map(actor => (
-              <ActorCard
-                key={actor.id}
-                actor={actor}
-                href={`/actor/${actor.id}`}
-              />
-            ))}
+            {featuredActors.length === 0
+              ? FEATURED_IDS.map(id => (
+                  <div key={id} className="aspect-[2/3] bg-zinc-900 rounded-xl animate-pulse" />
+                ))
+              : featuredActors.map(actor => (
+                  <ActorCard
+                    key={actor.id}
+                    actor={actor}
+                    href={`/actor/${actor.id}`}
+                  />
+                ))
+            }
           </div>
         </div>
       </div>

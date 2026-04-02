@@ -49,7 +49,7 @@ export function CoStarNetwork({ actorId, actorName, actorImage, credits }: CoSta
       const topCredits = credits
         .filter(m => m.release_date && m.vote_average > 0)
         .sort((a, b) => b.vote_average - a.vote_average)
-        .slice(0, 10)
+        .slice(0, 20)
 
       await Promise.all(
         topCredits.map(async movie => {
@@ -57,7 +57,7 @@ export function CoStarNetwork({ actorId, actorName, actorImage, credits }: CoSta
             const res = await fetch(`/api/movie/${movie.id}/credits`)
             const data = await res.json()
             const cast = data.cast ?? []
-            cast.slice(0, 12).forEach((c: { id: number; name: string; profile_path: string | null }) => {
+            cast.slice(0, 15).forEach((c: { id: number; name: string; profile_path: string | null }) => {
               if (c.id === actorId) return
               const existing = coStarMap.get(c.id)
               if (existing) {
@@ -74,7 +74,7 @@ export function CoStarNetwork({ actorId, actorName, actorImage, credits }: CoSta
 
       const sorted = Array.from(coStarMap.entries())
         .sort((a, b) => b[1].count - a[1].count)
-        .slice(0, 15)
+        .slice(0, 30)
         .map(([id, data]) => ({
           id,
           name: data.name,
@@ -159,7 +159,7 @@ export function CoStarNetwork({ actorId, actorName, actorImage, credits }: CoSta
         .distance(d => 100 + 20 * (1 / (d.weight || 1)))
         .strength(0.6)
       )
-      .force('charge', d3.forceManyBody().strength(-300))
+      .force('charge', d3.forceManyBody().strength(-400))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide<GraphNode>().radius(d => d.r + 12))
 
@@ -244,28 +244,47 @@ export function CoStarNetwork({ actorId, actorName, actorImage, credits }: CoSta
       .attr('stroke', '#f59e0b')
       .attr('stroke-width', 2)
 
-    // Labels
+    // Labels — full name split across two lines
     nodeEls.filter(d => !d.isCenter)
       .append('text')
       .attr('text-anchor', 'middle')
-      .attr('y', d => d.r + 12)
       .attr('fill', '#a1a1aa')
-      .attr('font-size', 9)
+      .attr('font-size', 8)
       .attr('pointer-events', 'none')
-      .text(d => d.name.split(' ').slice(-1)[0])
+      .each(function(d) {
+        const parts = d.name.split(' ')
+        const first = parts.slice(0, -1).join(' ')
+        const last = parts.slice(-1)[0]
+        const el = d3.select(this)
+        if (first) {
+          el.append('tspan')
+            .attr('x', 0)
+            .attr('dy', d.r + 11)
+            .text(first)
+          el.append('tspan')
+            .attr('x', 0)
+            .attr('dy', 10)
+            .text(last)
+        } else {
+          el.append('tspan')
+            .attr('x', 0)
+            .attr('dy', d.r + 11)
+            .text(last)
+        }
+      })
 
     // Hover highlight
     nodeEls.filter(d => !d.isCenter)
       .on('mouseenter', function(_event, d) {
         d3.select(this).select('circle:first-child')
           .attr('fill', '#451a03')
-        d3.select(this).select('text:last-child')
+        d3.select(this).select('text')
           .attr('fill', '#f59e0b')
       })
       .on('mouseleave', function(_event, d) {
         d3.select(this).select('circle:first-child')
           .attr('fill', d.isCenter ? '#92400e' : '#27272a')
-        d3.select(this).select('text:last-child')
+        d3.select(this).select('text')
           .attr('fill', '#a1a1aa')
       })
 
@@ -294,7 +313,7 @@ export function CoStarNetwork({ actorId, actorName, actorImage, credits }: CoSta
   }, [actorId, actorName, actorImage, coStars, isLoading, router])
 
   return (
-    <div ref={containerRef} className="w-full h-96 relative">
+    <div ref={containerRef} className="w-full h-[520px] relative">
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">

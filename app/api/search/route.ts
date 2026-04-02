@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { searchPersons } from '@/lib/tmdb'
+import { searchMulti } from '@/lib/tmdb'
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q')
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const results = await searchPersons(q.trim())
+    const results = await searchMulti(q.trim())
     return NextResponse.json({ results: results.slice(0, 10) })
   } catch (error) {
     console.error('Search error:', error)
