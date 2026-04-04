@@ -47,7 +47,7 @@ export default function MoviePage({ params }: { params: Promise<{ id: string }> 
   const stats = [
     { label: 'Rating', value: movie.vote_average > 0 ? movie.vote_average.toFixed(1) : '—', tooltip: 'Average user rating on themoviedb.org (0–10)' },
     { label: 'Box Office', value: movie.revenue > 0 ? `$${(movie.revenue / 1_000_000_000).toFixed(2)}B` : '—' },
-    { label: 'Budget', value: movie.budget > 0 ? `$${(movie.budget / 1_000_000).toFixed(0)}M` : '—' },
+    { label: 'Budget', value: (movie.budget && movie.budget > 0) ? `$${(movie.budget / 1_000_000).toFixed(0)}M` : '—' },
     { label: 'Runtime', value: movie.runtime ? `${movie.runtime}m` : '—' },
   ]
 

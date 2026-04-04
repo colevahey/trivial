@@ -106,7 +106,10 @@ export function CareerTimeline({ credits }: CareerTimelineProps) {
             data={data}
             fillOpacity={0.85}
             cursor="pointer"
-            onClick={(payload: DataPoint) => router.push(`/movie/${payload.id}`)}
+            onClick={(e: any) => {
+              const payload = e.payload || e
+              if (payload.id) router.push(`/movie/${payload.id}`)
+            }}
           >
             {data.map((entry, index) => {
               const size = maxRevenue > 0 ? 4 + (entry.revenue / maxRevenue) * 16 : 6
