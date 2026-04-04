@@ -406,6 +406,9 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
 
     simulation.on('tick', () => {
       simNodes.forEach(n => {
+        const padding = n.r + 10
+        n.x = Math.max(padding, Math.min(width - padding, n.x ?? 0))
+        n.y = Math.max(padding, Math.min(height - padding, n.y ?? 0))
         if (n.x != null && n.y != null) positionsRef.current.set(n.nodeId, { x: n.x, y: n.y })
       })
       linkEls
@@ -437,7 +440,7 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
       <div className="space-y-8">
         {/* Graph with highlighted path */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-          <div ref={containerRef} className="w-full h-[400px] relative rounded-t-2xl overflow-hidden">
+          <div ref={containerRef} className="w-full h-[500px] relative rounded-t-2xl overflow-hidden">
             <svg ref={svgRef} className="w-full h-full" />
           </div>
           <div className="p-4 bg-zinc-800/50 border-t border-zinc-800 text-center">
