@@ -5,7 +5,8 @@ import Image from 'next/image'
 import * as d3 from 'd3'
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb'
 import { ActorSearch } from '@/components/ui/ActorSearch'
-import type { Actor, SearchResult } from '@/lib/types'
+import { PathVisualizer } from '@/components/six-degrees/PathVisualizer'
+import type { Actor, SearchResult, PathNode } from '@/lib/types'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,34 @@ function isConnected(nodes: WebNode[], edges: WebEdge[], aId: string, bId: strin
   return false
 }
 
+function findPathInWeb(nodes: WebNode[], edges: WebEdge[], startId: string, endId: string): PathStep[] | null {
+  const adj = new Map<string, string[]>()
+  for (const n of nodes) adj.set(n.nodeId, [])
+  for (const e of edges) {
+    adj.get(e.actorNodeId)?.push(e.movieNodeId)
+    adj.get(e.movieNodeId)?.push(e.actorNodeId)
+  }
+
+  const visited = new Set([startId])
+  const queue: Array<{ id: string; path: PathStep[] }> = [{ id: startId, path: [{ nodeId: startId, type: 'actor' }] }]
+
+  while (queue.length) {
+    const { id, path } = queue.shift()!
+    if (id === endId) return path
+    for (const nb of adj.get(id) ?? []) {
+      if (!visited.has(nb)) {
+        visited.add(nb)
+        const node = nodes.find(n => n.nodeId === nb)
+        queue.push({
+          id: nb,
+          path: [...path, { nodeId: nb, type: node?.type ?? 'movie' }]
+        })
+      }
+    }
+  }
+  return null
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 interface TriviaWebGameProps {
@@ -69,6 +98,11 @@ interface TriviaWebGameProps {
   endActor: Actor
   optimalLength: number
   onRestart: () => void
+}
+
+interface PathStep {
+  nodeId: string
+  type: 'actor' | 'movie'
 }
 
 export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }: TriviaWebGameProps) {
@@ -94,6 +128,8 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
   const [addedCount, setAddedCount] = useState(0)
   const [toast, setToast]   = useState<{ message: string; ok: boolean } | null>(null)
   const [isAdding, setIsAdding] = useState(false)
+  const [userPath, setUserPath] = useState<PathStep[] | null>(null)
+  const [optimalPath, setOptimalPath] = useState<PathNode[] | null>(null)
 
   const svgRef       = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -133,7 +169,8 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
 
         const newNode: WebNode = {
           nodeId, numId: result.id, type: 'movie',
-          name: result.name, image: result.profile_path,
+          name: result.name,
+          image: result.profile_path ? `${TMDB_IMAGE_BASE}${result.profile_path}` : null,
           isEndpoint: false, cast,
         }
         const newEdges = matchingActors.map(a => ({ actorNodeId: a.nodeId, movieNodeId: nodeId }))
@@ -145,7 +182,20 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
         setAddedCount(c => c + 1)
         flash(`Added "${result.name}"`, true)
 
-        if (isConnected(nextNodes, nextEdges, startNodeId, endNodeId)) setStatus('won')
+        if (isConnected(nextNodes, nextEdges, startNodeId, endNodeId)) {
+          const path = findPathInWeb(nextNodes, nextEdges, startNodeId, endNodeId)
+          setUserPath(path)
+
+          const optRes = await fetch('/api/six-degrees', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fromId: startActor.id, toId: endActor.id }),
+          })
+          const optData = await optRes.json()
+          setOptimalPath(optData.path)
+
+          setStatus('won')
+        }
       } finally {
         setIsAdding(false)
       }
@@ -160,7 +210,8 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
 
       const newNode: WebNode = {
         nodeId, numId: result.id, type: 'actor',
-        name: result.name, image: result.profile_path,
+        name: result.name,
+        image: result.profile_path ? `${TMDB_IMAGE_BASE}${result.profile_path}` : null,
         isEndpoint: false,
       }
       const newEdges = matchingMovies.map(m => ({ actorNodeId: nodeId, movieNodeId: m.nodeId }))
@@ -172,7 +223,20 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
       setAddedCount(c => c + 1)
       flash(`Added "${result.name}"`, true)
 
-      if (isConnected(nextNodes, nextEdges, startNodeId, endNodeId)) setStatus('won')
+      if (isConnected(nextNodes, nextEdges, startNodeId, endNodeId)) {
+        const path = findPathInWeb(nextNodes, nextEdges, startNodeId, endNodeId)
+        setUserPath(path)
+
+        const optRes = await fetch('/api/six-degrees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fromId: startActor.id, toId: endActor.id }),
+        })
+        const optData = await optRes.json()
+        setOptimalPath(optData.path)
+
+        setStatus('won')
+      }
     }
   }
 
@@ -240,10 +304,33 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
 
     simRef.current = simulation
 
+    const userPathSet = new Set(userPath?.map(p => p.nodeId) ?? [])
+    const userPathEdges = new Set<string>()
+    for (let i = 0; i < (userPath?.length ?? 0) - 1; i++) {
+      const a = userPath![i].nodeId
+      const b = userPath![i + 1].nodeId
+      userPathEdges.add(`${a}-${b}`)
+      userPathEdges.add(`${b}-${a}`)
+    }
+
     const linkEls = svg.append('g')
       .selectAll('line').data(simLinks).enter()
       .append('line')
-      .attr('stroke', '#3f3f46').attr('stroke-width', 1.5).attr('stroke-opacity', 0.7)
+      .attr('stroke', d => {
+        const sourceId = (d.source as SimNode).nodeId
+        const targetId = (d.target as SimNode).nodeId
+        return userPathEdges.has(`${sourceId}-${targetId}`) ? '#fbbf24' : '#3f3f46'
+      })
+      .attr('stroke-width', d => {
+        const sourceId = (d.source as SimNode).nodeId
+        const targetId = (d.target as SimNode).nodeId
+        return userPathEdges.has(`${sourceId}-${targetId}`) ? 3.5 : 1.5
+      })
+      .attr('stroke-opacity', d => {
+        const sourceId = (d.source as SimNode).nodeId
+        const targetId = (d.target as SimNode).nodeId
+        return userPathEdges.has(`${sourceId}-${targetId}`) ? 1 : 0.7
+      })
 
     const nodeEls = svg.append('g')
       .selectAll<SVGGElement, SimNode>('g').data(simNodes).enter()
@@ -252,7 +339,13 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
     // Bg circle
     nodeEls.append('circle')
       .attr('r', d => d.r + 2)
-      .attr('fill', d => d.isEndpoint ? '#92400e' : d.type === 'movie' ? '#1c1c1f' : '#27272a')
+      .attr('fill', d => {
+        if (d.isEndpoint) {
+          return d.nodeId === startNodeId ? '#92400e' : '#78350f'
+        }
+        if (userPathSet.has(d.nodeId)) return d.type === 'movie' ? '#78350f' : '#3f3f46'
+        return d.type === 'movie' ? '#1c1c1f' : '#27272a'
+      })
       .attr('filter', d => d.isEndpoint ? 'url(#ep-glow)' : 'none')
 
     // Image or fallback
@@ -279,7 +372,9 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
     // Endpoint amber ring
     nodeEls.filter(d => d.isEndpoint)
       .append('circle').attr('r', d => d.r + 3)
-      .attr('fill', 'none').attr('stroke', '#f59e0b').attr('stroke-width', 2.5)
+      .attr('fill', 'none')
+      .attr('stroke', d => d.nodeId === startNodeId ? '#fbbf24' : '#d97706')
+      .attr('stroke-width', 2.5)
 
     // Movie dashed ring
     nodeEls.filter(d => !d.isEndpoint && d.type === 'movie')
@@ -290,7 +385,10 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
     // Labels
     nodeEls.append('text')
       .attr('text-anchor', 'middle').attr('pointer-events', 'none')
-      .attr('fill', d => d.isEndpoint ? '#fbbf24' : '#a1a1aa')
+      .attr('fill', d => {
+        if (d.isEndpoint) return d.nodeId === startNodeId ? '#fbbf24' : '#d97706'
+        return '#a1a1aa'
+      })
       .attr('font-size', d => d.isEndpoint ? 9 : 8)
       .attr('font-weight', d => d.isEndpoint ? 'bold' : 'normal')
       .each(function(d) {
@@ -327,7 +425,7 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
     ro.observe(container)
 
     return () => { simulation.stop(); ro.disconnect() }
-  }, [nodes, edges, startNodeId, endNodeId])
+  }, [nodes, edges, startNodeId, endNodeId, userPath])
 
   // ── Win screen ────────────────────────────────────────────────────────────
 
@@ -336,28 +434,80 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
 
   if (status === 'won') {
     return (
-      <div className="max-w-2xl mx-auto text-center py-16 px-4">
-        <div className="text-6xl mb-4">🎬</div>
-        <h2 className="text-3xl font-bold text-amber-400 mb-2">Connected!</h2>
-        <p className="text-zinc-400 mb-2">
-          You bridged <span className="text-white font-semibold">{startActor.name}</span> and{' '}
-          <span className="text-white font-semibold">{endActor.name}</span>
-        </p>
-        <p className="text-zinc-500 text-sm mb-8">
-          {addedCount} node{addedCount !== 1 ? 's' : ''} added · optimal: {optimalNodes}
-        </p>
-        <div className="bg-zinc-900 border border-amber-500/30 rounded-2xl p-8 mb-8">
-          <div className="text-zinc-400 text-sm uppercase tracking-widest mb-2">Score</div>
-          <div className="text-7xl font-black text-amber-400 mb-4">{score}</div>
-          {addedCount <= optimalNodes && (
-            <div className="inline-flex items-center gap-2 bg-amber-400/10 text-amber-400 px-4 py-2 rounded-full text-sm font-semibold">
-              Perfect path!
-            </div>
-          )}
+      <div className="space-y-8">
+        {/* Graph with highlighted path */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+          <div ref={containerRef} className="w-full h-[400px] relative rounded-t-2xl overflow-hidden">
+            <svg ref={svgRef} className="w-full h-full" />
+          </div>
+          <div className="p-4 bg-zinc-800/50 border-t border-zinc-800 text-center">
+            <p className="text-sm text-zinc-400">Your path is highlighted in <span className="text-amber-300 font-semibold">gold</span></p>
+          </div>
         </div>
+
+        {/* Header */}
+        <div className="text-center">
+          <div className="text-5xl mb-3">🎬</div>
+          <h2 className="text-3xl font-bold text-amber-400 mb-2">Connected!</h2>
+          <p className="text-zinc-400">
+            You bridged <span className="text-white font-semibold">{startActor.name}</span> and{' '}
+            <span className="text-white font-semibold">{endActor.name}</span>
+          </p>
+        </div>
+
+        {/* Paths comparison */}
+        {userPath && optimalPath && (
+          <div className="space-y-8">
+            {/* Your path */}
+            <div className="bg-zinc-900 border border-amber-500/30 rounded-2xl p-6">
+              <div className="text-center mb-4">
+                <span className="inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-400 px-4 py-1.5 rounded-full text-sm font-semibold">
+                  Your Path
+                </span>
+              </div>
+              <PathVisualizer path={userPath.map(step => {
+                const node = nodes.find(n => n.nodeId === step.nodeId)
+                return {
+                  type: step.type,
+                  id: node?.numId ?? 0,
+                  name: node?.name ?? '',
+                  image: node?.image ?? null,
+                }
+              })} />
+            </div>
+
+            {/* Optimal path */}
+            <div className="bg-zinc-900 border border-zinc-700/30 rounded-2xl p-6">
+              <div className="text-center mb-4">
+                <span className="inline-flex items-center gap-2 bg-zinc-700/30 border border-zinc-700 text-zinc-400 px-4 py-1.5 rounded-full text-sm font-semibold">
+                  Optimal Path
+                </span>
+              </div>
+              <PathVisualizer path={optimalPath} />
+            </div>
+          </div>
+        )}
+
+        {/* Score */}
+        <div className="bg-gradient-to-r from-amber-950/20 to-amber-900/20 border border-amber-500/20 rounded-xl p-6 text-center">
+          <div className="text-zinc-400 text-xs uppercase tracking-widest mb-2">Score</div>
+          <div className="text-6xl font-black text-amber-400 mb-3">{score}</div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-zinc-500">
+            <span>{addedCount} node{addedCount !== 1 ? 's' : ''} added</span>
+            <span>•</span>
+            <span>Optimal: {optimalNodes} nodes</span>
+            {addedCount <= optimalNodes && (
+              <>
+                <span>•</span>
+                <span className="text-amber-400 font-semibold">Perfect! 🌟</span>
+              </>
+            )}
+          </div>
+        </div>
+
         <button
           onClick={onRestart}
-          className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-bold rounded-xl transition-colors"
+          className="w-full px-6 py-3 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-bold rounded-xl transition-colors"
         >
           Play Again
         </button>

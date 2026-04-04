@@ -22,26 +22,26 @@ export function PathVisualizer({ path }: PathVisualizerProps) {
     return () => clearInterval(interval)
   }, [path])
 
-  const hops = Math.floor((path.length - 1) / 2)
+  const degrees = Math.floor((path.length - 1) / 2)
 
   return (
-    <div className="w-full">
+    <div className="w-full min-h-[200px]">
       <div className="text-center mb-6">
         <span className="inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-400 px-4 py-1.5 rounded-full text-sm font-semibold">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
-          {hops} {hops === 1 ? 'hop' : 'hops'} of separation
+          {degrees} {degrees === 1 ? 'degree' : 'degrees'} of separation
         </span>
       </div>
 
-      <div className="overflow-x-auto pb-4">
-        <div className="flex items-center gap-0 min-w-max mx-auto justify-center">
+      <div className="overflow-x-auto py-6">
+        <div className="flex items-center gap-0 min-w-max mx-auto justify-center py-3">
           {path.map((node, index) => (
             <div key={`${node.type}-${node.id}-${index}`} className="flex items-center">
               {/* Node */}
               <div
-                className={`flex flex-col items-center transition-all duration-500 ${
+                className={`flex flex-col items-center transition-all duration-500 py-2 ${
                   index < visibleCount ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                 }`}
                 style={{ transitionDelay: `${index * 100}ms` }}

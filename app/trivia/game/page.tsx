@@ -18,7 +18,7 @@ const SEED_ACTOR_IDS = [
   500,      // Tom Cruise
   2888,     // Will Smith
   16828,    // Matt Damon
-  1461,     // Julia Roberts
+  1204,     // Julia Roberts
   10993,    // Cate Blanchett
   2037,     // Morgan Freeman
   18269,    // Chris Evans
@@ -28,6 +28,26 @@ const SEED_ACTOR_IDS = [
   8784,     // Daniel Craig
   1357644,  // Timothée Chalamet
   5292,     // Hugh Jackman
+  2231,     // Samuel L. Jackson
+  6384,     // Keanu Reeves
+  524,      // Natalie Portman
+  1461,     // George Clooney
+  85,       // Johnny Depp
+  2227,     // Nicole Kidman
+  4173,     // Anthony Hopkins
+  131,      // Jake Gyllenhaal
+  72129,    // Jennifer Lawrence
+  6885,     // Charlize Theron
+  73421,    // Joaquin Phoenix
+  18918,    // Dwayne Johnson
+  30614,    // Ryan Gosling
+  54693,    // Emma Stone
+  1813,     // Anne Hathaway
+  10859,    // Ryan Reynolds
+  71580,    // Benedict Cumberbatch
+  1023139,  // Adam Driver
+  505710,   // Zendaya
+  1373737,  // Florence Pugh
 ]
 
 type PageState = 'loading' | 'setup' | 'playing' | 'error'
@@ -122,6 +142,7 @@ export default function TriviaGamePage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [gameKey, setGameKey]         = useState(0)
   const [shufflingSlot, setShufflingSlot] = useState<'start' | 'end' | null>(null)
+  const [shufflingBoth, setShufflingBoth] = useState(false)
 
   const initGame = useCallback(async () => {
     setPageState('loading')
@@ -140,8 +161,16 @@ export default function TriviaGamePage() {
 
   useEffect(() => { initGame() }, [initGame])
 
+  async function handleShuffleBoth() {
+    if (shufflingSlot || shufflingBoth) return
+    setShufflingBoth(true)
+    const config = await findValidPair()
+    if (config) setGameConfig(config)
+    setShufflingBoth(false)
+  }
+
   async function handleShuffleSlot(slot: 'start' | 'end') {
-    if (!gameConfig || shufflingSlot) return
+    if (!gameConfig || shufflingSlot || shufflingBoth) return
     setShufflingSlot(slot)
 
     const keepId = slot === 'start' ? gameConfig.targetActor.id : gameConfig.startActor.id
@@ -206,8 +235,9 @@ export default function TriviaGamePage() {
   // ── Setup ─────────────────────────────────────────────────────────────────
 
   if (pageState === 'setup') {
+    const anyShuffling = !!shufflingSlot || shufflingBoth
     return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <div className="flex items-center justify-between mb-8">
           <Link href="/trivia" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 text-sm transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -218,26 +248,26 @@ export default function TriviaGamePage() {
         </div>
 
         <div className="text-center mb-10">
-          <h2 className="text-2xl font-black text-white mb-2">Connect the dots</h2>
+          <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">Connect the dots</h2>
           <p className="text-zinc-500 text-sm">Build a web of movies and actors linking these two stars. Shuffle either one if you want a different challenge.</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-6 mb-6">
           {(['start', 'end'] as const).map(slot => {
             const actor = slot === 'start' ? gameConfig.startActor : gameConfig.targetActor
             const isShuffling = shufflingSlot === slot
             return (
-              <div key={slot} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col items-center gap-3">
+              <div key={slot} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8 flex flex-col items-center gap-4">
                 <div className="text-zinc-500 text-xs uppercase tracking-wider">{slot === 'start' ? 'Start' : 'Goal'}</div>
-                <div className={`w-20 h-20 rounded-full overflow-hidden bg-zinc-800 ring-2 ${slot === 'start' ? 'ring-amber-400' : 'ring-amber-500/60'}`}>
+                <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-zinc-800 ring-2 ${slot === 'start' ? 'ring-amber-400' : 'ring-amber-500/60'}`}>
                   {actor.profile_path
-                    ? <Image src={`${TMDB_IMAGE_BASE}${actor.profile_path}`} alt={actor.name} width={80} height={80} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center text-zinc-400 text-2xl font-bold">{actor.name[0]}</div>}
+                    ? <Image src={`${TMDB_IMAGE_BASE}${actor.profile_path}`} alt={actor.name} width={128} height={128} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-zinc-400 text-3xl font-bold">{actor.name[0]}</div>}
                 </div>
-                <div className="text-white font-semibold text-center text-sm leading-snug">{actor.name}</div>
+                <div className="text-white font-semibold text-center text-sm sm:text-base leading-snug">{actor.name}</div>
                 <button
                   onClick={() => handleShuffleSlot(slot)}
-                  disabled={!!shufflingSlot}
+                  disabled={anyShuffling}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isShuffling
@@ -252,14 +282,22 @@ export default function TriviaGamePage() {
           })}
         </div>
 
-        <div className="text-center text-zinc-600 text-xs mb-6">
-          Optimal path: {gameConfig.optimalLength} hop{gameConfig.optimalLength !== 1 ? 's' : ''}
-        </div>
-
-        <div className="flex justify-center">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            onClick={handleShuffleBoth}
+            disabled={anyShuffling}
+            className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium rounded-xl text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {shufflingBoth
+              ? <span className="w-4 h-4 border border-amber-500 border-t-transparent rounded-full animate-spin inline-block" />
+              : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>}
+            Shuffle Both
+          </button>
           <button
             onClick={handlePlay}
-            disabled={!!shufflingSlot}
+            disabled={anyShuffling}
             className="px-8 py-3 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-bold rounded-xl text-lg transition-colors disabled:opacity-40"
           >
             Let&apos;s Play

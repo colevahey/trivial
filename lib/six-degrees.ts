@@ -138,7 +138,7 @@ export async function findPath(fromActorId: number, toActorId: number): Promise<
           // Check for intersection with backward visited
           if (backwardVisited.has(actor.id)) {
             const backPath = backwardVisited.get(actor.id)!
-            return [...newPath, ...backPath.slice(1).reverse()]
+            return [...newPath, ...backPath.slice(0, -1).reverse()]
           }
 
           if (actor.id === toActorId) {
@@ -187,7 +187,7 @@ export async function findPath(fromActorId: number, toActorId: number): Promise<
           // Check for intersection with forward visited
           if (forwardVisited.has(actor.id)) {
             const fwdPath = forwardVisited.get(actor.id)!
-            return [...fwdPath, ...newPath.slice(1).reverse()]
+            return [...fwdPath, ...newPath.slice(0, -1).reverse()]
           }
 
           if (actor.id === fromActorId) {

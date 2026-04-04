@@ -66,14 +66,6 @@ function SixDegreesContent() {
     }
   }
 
-  function handleSwap() {
-    const temp = actorA
-    setActorA(actorB)
-    setActorB(temp)
-    setPath(null)
-    setError(null)
-  }
-
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Header */}
@@ -99,19 +91,6 @@ function SixDegreesContent() {
             onSelect={a => { setActorA(a); setPath(null); setError(null) }}
             onClear={() => { setActorA(null); setPath(null); setError(null) }}
           />
-
-          <div className="sm:hidden flex justify-center">
-            <button
-              onClick={handleSwap}
-              disabled={!actorA && !actorB}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-400 hover:text-white rounded-lg text-sm transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-              </svg>
-              Swap
-            </button>
-          </div>
 
           <ActorSelector
             label="Actor B"
@@ -140,17 +119,6 @@ function SixDegreesContent() {
                 Find Connection
               </>
             )}
-          </button>
-
-          <button
-            onClick={handleSwap}
-            disabled={!actorA && !actorB}
-            className="hidden sm:flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-400 hover:text-white rounded-xl text-sm font-medium transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-            </svg>
-            Swap actors
           </button>
 
           {(actorA || actorB) && (
