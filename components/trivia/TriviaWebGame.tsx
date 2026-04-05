@@ -267,7 +267,7 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
 
     // Delay measurement by one frame to ensure container is fully laid out
     const raf = requestAnimationFrame(() => {
-      const width  = container.clientWidth  || 600
+      let width  = container.clientWidth  || 600
       const height = container.clientHeight || 380
 
       simRef.current?.stop()
@@ -463,12 +463,12 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
     })
 
     const ro = new ResizeObserver(() => {
-      const w = container.clientWidth
-      svg.attr('width', w)
-      simulation.force('x', d3.forceX(w / 2).strength(0.04))
+      width = container.clientWidth
+      svg.attr('width', width)
+      simulation.force('x', d3.forceX(width / 2).strength(0.04))
       simNodes.forEach(n => {
-        if (n.nodeId === startNodeId) n.fx = w * 0.15
-        if (n.nodeId === endNodeId) n.fx = w * 0.85
+        if (n.nodeId === startNodeId) n.fx = width * 0.15
+        if (n.nodeId === endNodeId) n.fx = width * 0.85
       })
       simulation.alpha(0.3).restart()
     })
