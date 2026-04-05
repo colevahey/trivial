@@ -72,7 +72,16 @@ function findPathInWeb(nodes: WebNode[], edges: WebEdge[], startId: string, endI
   }
 
   const visited = new Set([startId])
-  const queue: Array<{ id: string; path: PathStep[] }> = [{ id: startId, path: [{ nodeId: startId, type: 'actor' }] }]
+  const startNode = nodes.find(n => n.nodeId === startId)
+  const queue: Array<{ id: string; path: PathStep[] }> = [{
+    id: startId,
+    path: [{
+      nodeId: startId,
+      type: 'actor',
+      name: startNode?.name ?? '',
+      image: startNode?.image ?? null,
+    }]
+  }]
 
   while (queue.length) {
     const { id, path } = queue.shift()!
@@ -83,7 +92,12 @@ function findPathInWeb(nodes: WebNode[], edges: WebEdge[], startId: string, endI
         const node = nodes.find(n => n.nodeId === nb)
         queue.push({
           id: nb,
-          path: [...path, { nodeId: nb, type: node?.type ?? 'movie' }]
+          path: [...path, {
+            nodeId: nb,
+            type: node?.type ?? 'movie',
+            name: node?.name ?? '',
+            image: node?.image ?? null,
+          }]
         })
       }
     }
@@ -103,6 +117,8 @@ interface TriviaWebGameProps {
 interface PathStep {
   nodeId: string
   type: 'actor' | 'movie'
+  name: string
+  image: string | null
 }
 
 export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }: TriviaWebGameProps) {
@@ -246,14 +262,19 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
     if (!svgRef.current || !containerRef.current) return
 
     const container = containerRef.current
-    const width  = container.clientWidth  || 600
-    const height = container.clientHeight || 380
+    const svgEl = svgRef.current
+    let cleanup: (() => void) | undefined
 
-    simRef.current?.stop()
+    // Delay measurement by one frame to ensure container is fully laid out
+    const raf = requestAnimationFrame(() => {
+      const width  = container.clientWidth  || 600
+      const height = container.clientHeight || 380
 
-    const svg = d3.select(svgRef.current)
-    svg.selectAll('*').remove()
-    svg.attr('width', width).attr('height', height)
+      simRef.current?.stop()
+
+      const svg = d3.select(svgEl)
+      svg.selectAll('*').remove()
+      svg.attr('width', width).attr('height', height)
 
     const defs = svg.append('defs')
     const filter = defs.append('filter').attr('id', 'ep-glow')
@@ -404,6 +425,28 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
         }
       })
 
+    // Drag behavior
+    const dragHandler = d3.drag<SVGGElement, SimNode>()
+      .on('start', (event, d) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart()
+        d.fx = d.x
+        d.fy = d.y
+      })
+      .on('drag', (event, d) => {
+        d.fx = event.x
+        d.fy = event.y
+      })
+      .on('end', (event, d) => {
+        if (!event.active) simulation.alphaTarget(0)
+        d.fx = null
+        d.fy = null
+      })
+
+    nodeEls.call(dragHandler)
+    nodeEls.style('cursor', 'grab')
+      .on('mouseenter', function() { d3.select(this).style('cursor', 'grabbing') })
+      .on('mouseleave', function() { d3.select(this).style('cursor', 'grab') })
+
     simulation.on('tick', () => {
       simNodes.forEach(n => {
         const padding = n.r + 10
@@ -423,11 +466,18 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
       const w = container.clientWidth
       svg.attr('width', w)
       simulation.force('x', d3.forceX(w / 2).strength(0.04))
+      simNodes.forEach(n => {
+        if (n.nodeId === startNodeId) n.fx = w * 0.15
+        if (n.nodeId === endNodeId) n.fx = w * 0.85
+      })
       simulation.alpha(0.3).restart()
     })
     ro.observe(container)
 
-    return () => { simulation.stop(); ro.disconnect() }
+    cleanup = () => { simulation.stop(); ro.disconnect() }
+    }) // end requestAnimationFrame
+
+    return () => { cancelAnimationFrame(raf); cleanup?.() }
   }, [nodes, edges, startNodeId, endNodeId, userPath])
 
   // ── Win screen ────────────────────────────────────────────────────────────
@@ -435,90 +485,7 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
   const optimalNodes = 2 * optimalLength - 1
   const score = Math.max(0, 1000 - Math.max(0, addedCount - optimalNodes) * 100)
 
-  if (status === 'won') {
-    return (
-      <div className="space-y-8">
-        {/* Graph with highlighted path */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-          <div ref={containerRef} className="w-full h-[500px] relative rounded-t-2xl overflow-hidden">
-            <svg ref={svgRef} className="w-full h-full" />
-          </div>
-          <div className="p-4 bg-zinc-800/50 border-t border-zinc-800 text-center">
-            <p className="text-sm text-zinc-400">Your path is highlighted in <span className="text-amber-300 font-semibold">gold</span></p>
-          </div>
-        </div>
-
-        {/* Header */}
-        <div className="text-center">
-          <div className="text-5xl mb-3">🎬</div>
-          <h2 className="text-3xl font-bold text-amber-400 mb-2">Connected!</h2>
-          <p className="text-zinc-400">
-            You bridged <span className="text-white font-semibold">{startActor.name}</span> and{' '}
-            <span className="text-white font-semibold">{endActor.name}</span>
-          </p>
-        </div>
-
-        {/* Paths comparison */}
-        {userPath && optimalPath && (
-          <div className="space-y-8">
-            {/* Your path */}
-            <div className="bg-zinc-900 border border-amber-500/30 rounded-2xl p-6">
-              <div className="text-center mb-4">
-                <span className="inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-400 px-4 py-1.5 rounded-full text-sm font-semibold">
-                  Your Path
-                </span>
-              </div>
-              <PathVisualizer path={userPath.map(step => {
-                const node = nodes.find(n => n.nodeId === step.nodeId)
-                return {
-                  type: step.type,
-                  id: node?.numId ?? 0,
-                  name: node?.name ?? '',
-                  image: node?.image ?? null,
-                }
-              })} />
-            </div>
-
-            {/* Optimal path */}
-            <div className="bg-zinc-900 border border-zinc-700/30 rounded-2xl p-6">
-              <div className="text-center mb-4">
-                <span className="inline-flex items-center gap-2 bg-zinc-700/30 border border-zinc-700 text-zinc-400 px-4 py-1.5 rounded-full text-sm font-semibold">
-                  Optimal Path
-                </span>
-              </div>
-              <PathVisualizer path={optimalPath} />
-            </div>
-          </div>
-        )}
-
-        {/* Score */}
-        <div className="bg-gradient-to-r from-amber-950/20 to-amber-900/20 border border-amber-500/20 rounded-xl p-6 text-center">
-          <div className="text-zinc-400 text-xs uppercase tracking-widest mb-2">Score</div>
-          <div className="text-6xl font-black text-amber-400 mb-3">{score}</div>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-zinc-500">
-            <span>{addedCount} node{addedCount !== 1 ? 's' : ''} added</span>
-            <span>•</span>
-            <span>Optimal: {optimalNodes} nodes</span>
-            {addedCount <= optimalNodes && (
-              <>
-                <span>•</span>
-                <span className="text-amber-400 font-semibold">Perfect! 🌟</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        <button
-          onClick={onRestart}
-          className="w-full px-6 py-3 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-bold rounded-xl transition-colors"
-        >
-          Play Again
-        </button>
-      </div>
-    )
-  }
-
-  // ── Playing ───────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4">
@@ -538,7 +505,9 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
           </div>
 
           <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-            <div className="text-zinc-600 text-xs uppercase tracking-widest">connect</div>
+            {status === 'won'
+              ? <div className="text-amber-400 text-xs font-bold uppercase tracking-widest">Connected!</div>
+              : <div className="text-zinc-600 text-xs uppercase tracking-widest">connect</div>}
             <div className="text-zinc-600 text-lg">⟶</div>
             <div className="text-amber-400 text-xs font-medium">{addedCount} added</div>
           </div>
@@ -557,9 +526,9 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
         </div>
       </div>
 
-      {/* Web graph + search */}
+      {/* Web graph */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl">
-        <div ref={containerRef} className="w-full h-[380px] relative rounded-t-2xl overflow-hidden">
+        <div ref={containerRef} className={`w-full relative overflow-hidden ${status === 'won' ? 'h-[500px] rounded-2xl' : 'h-[380px] rounded-t-2xl'}`}>
           <svg ref={svgRef} className="w-full h-full" />
 
           {toast && (
@@ -573,25 +542,88 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
           )}
         </div>
 
-        <div className="p-4 border-t border-zinc-800 space-y-2">
-          <ActorSearch
-            onSelect={handleSelect}
-            placeholder="Add a movie or actor…"
-            className="w-full"
-          />
-          {isAdding && (
-            <div className="flex items-center gap-2 text-zinc-500 text-xs">
-              <div className="w-3 h-3 border border-amber-500 border-t-transparent rounded-full animate-spin" />
-              Checking connection…
+        {/* Search bar — only while playing */}
+        {status === 'playing' && (
+          <div className="p-4 border-t border-zinc-800 space-y-2">
+            <ActorSearch
+              onSelect={handleSelect}
+              placeholder="Add a movie or actor…"
+              className="w-full"
+            />
+            {isAdding && (
+              <div className="flex items-center gap-2 text-zinc-500 text-xs">
+                <div className="w-3 h-3 border border-amber-500 border-t-transparent rounded-full animate-spin" />
+                Checking connection…
+              </div>
+            )}
+            {!isAdding && nodes.length === 2 && (
+              <p className="text-zinc-600 text-xs">
+                Start with a film starring <span className="text-zinc-400">{startActor.name}</span> or <span className="text-zinc-400">{endActor.name}</span>
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Results — only when won */}
+      {status === 'won' && (
+        <>
+          {/* Paths comparison */}
+          {userPath && optimalPath && (
+            <div className="space-y-4">
+              <div className="bg-zinc-900 border border-amber-500/30 rounded-2xl p-6">
+                <div className="text-center mb-4">
+                  <span className="inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-400 px-4 py-1.5 rounded-full text-sm font-semibold">
+                    Your Path
+                  </span>
+                </div>
+                <PathVisualizer path={userPath.map((step) => {
+                  const numId = step.nodeId.split('-')[1]
+                  return {
+                    type: step.type,
+                    id: parseInt(numId) || 0,
+                    name: step.name,
+                    image: step.image,
+                  }
+                })} />
+              </div>
+
+              <div className="bg-zinc-900 border border-zinc-700/30 rounded-2xl p-6">
+                <div className="text-center mb-4">
+                  <span className="inline-flex items-center gap-2 bg-zinc-700/30 border border-zinc-700 text-zinc-400 px-4 py-1.5 rounded-full text-sm font-semibold">
+                    Optimal Path
+                  </span>
+                </div>
+                <PathVisualizer path={optimalPath} />
+              </div>
             </div>
           )}
-          {!isAdding && nodes.length === 2 && (
-            <p className="text-zinc-600 text-xs">
-              Start with a film starring <span className="text-zinc-400">{startActor.name}</span> or <span className="text-zinc-400">{endActor.name}</span>
-            </p>
-          )}
-        </div>
-      </div>
+
+          {/* Score */}
+          <div className="bg-gradient-to-r from-amber-950/20 to-amber-900/20 border border-amber-500/20 rounded-xl p-6 text-center">
+            <div className="text-zinc-400 text-xs uppercase tracking-widest mb-2">Score</div>
+            <div className="text-6xl font-black text-amber-400 mb-3">{score}</div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-zinc-500">
+              <span>{addedCount} node{addedCount !== 1 ? 's' : ''} added</span>
+              <span>•</span>
+              <span>Optimal: {optimalNodes} nodes</span>
+              {addedCount <= optimalNodes && (
+                <>
+                  <span>•</span>
+                  <span className="text-amber-400 font-semibold">Perfect!</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={onRestart}
+            className="w-full px-6 py-3 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-bold rounded-xl transition-colors"
+          >
+            Play Again
+          </button>
+        </>
+      )}
     </div>
   )
 }
