@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { TriviaWebGame } from '@/components/trivia/TriviaWebGame'
+import { ActorSearch } from '@/components/ui/ActorSearch'
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb'
-import type { Actor, PathNode } from '@/lib/types'
+import type { Actor, PathNode, SearchResult } from '@/lib/types'
 
 const SEED_ACTOR_IDS = [
   287,      // Brad Pitt
@@ -143,6 +144,8 @@ export default function TriviaGamePage() {
   const [gameKey, setGameKey]         = useState(0)
   const [shufflingSlot, setShufflingSlot] = useState<'start' | 'end' | null>(null)
   const [shufflingBoth, setShufflingBoth] = useState(false)
+  const [searchingSlot, setSearchingSlot] = useState<'start' | 'end' | null>(null)
+  const [slotError, setSlotError] = useState<{ slot: 'start' | 'end'; msg: string } | null>(null)
 
   const initGame = useCallback(async () => {
     setPageState('loading')
@@ -182,6 +185,47 @@ export default function TriviaGamePage() {
         targetActor:  slot === 'end'   ? result.actor : prev.targetActor,
         optimalLength: result.optimalLength,
       } : prev)
+    }
+    setShufflingSlot(null)
+  }
+
+  async function handleSelectActor(slot: 'start' | 'end', result: SearchResult) {
+    if (!gameConfig || shufflingSlot || shufflingBoth) return
+    setSlotError(null)
+    setSearchingSlot(null)
+    setShufflingSlot(slot)
+
+    const otherId = slot === 'start' ? gameConfig.targetActor.id : gameConfig.startActor.id
+    const newId = result.id
+
+    try {
+      const pathRes = await fetch('/api/six-degrees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromId: newId, toId: otherId }),
+      })
+      const pathData = await pathRes.json()
+      const path: PathNode[] = pathData.path ?? []
+      const optimalLength = Math.floor((path.length - 1) / 2)
+
+      if (!path.length || optimalLength < 2 || optimalLength > 4) {
+        setSlotError({ slot, msg: `No valid 2–4 hop path found. Try a different actor.` })
+      } else {
+        const actor: Actor = {
+          id: result.id, name: result.name,
+          profile_path: result.profile_path ?? null,
+          biography: '', birthday: null,
+          known_for_department: result.known_for_department ?? '',
+          popularity: result.popularity ?? 0,
+        }
+        setGameConfig(prev => prev ? {
+          startActor:    slot === 'start' ? actor : prev.startActor,
+          targetActor:   slot === 'end'   ? actor : prev.targetActor,
+          optimalLength,
+        } : prev)
+      }
+    } catch {
+      setSlotError({ slot, msg: 'Something went wrong. Try again.' })
     }
     setShufflingSlot(null)
   }
@@ -265,18 +309,45 @@ export default function TriviaGamePage() {
                     : <div className="w-full h-full flex items-center justify-center text-zinc-400 text-3xl font-bold">{actor.name[0]}</div>}
                 </div>
                 <div className="text-white font-semibold text-center text-sm sm:text-base leading-snug">{actor.name}</div>
-                <button
-                  onClick={() => handleShuffleSlot(slot)}
-                  disabled={anyShuffling}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {isShuffling
-                    ? <span className="w-3 h-3 border border-amber-500 border-t-transparent rounded-full animate-spin inline-block" />
-                    : <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>}
-                  Shuffle
-                </button>
+
+                <div className="flex items-center gap-2 w-full justify-center">
+                  <button
+                    onClick={() => handleShuffleSlot(slot)}
+                    disabled={anyShuffling}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {isShuffling
+                      ? <span className="w-3 h-3 border border-amber-500 border-t-transparent rounded-full animate-spin inline-block" />
+                      : <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>}
+                    Shuffle
+                  </button>
+                  <button
+                    onClick={() => { setSearchingSlot(s => s === slot ? null : slot); setSlotError(null) }}
+                    disabled={anyShuffling}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Choose
+                  </button>
+                </div>
+
+                {searchingSlot === slot && (
+                  <div className="w-full">
+                    <ActorSearch
+                      onSelect={r => handleSelectActor(slot, r)}
+                      placeholder="Search for an actor…"
+                      personOnly
+                      className="w-full"
+                    />
+                    {slotError?.slot === slot && (
+                      <p className="text-red-400 text-xs mt-1.5 text-center">{slotError.msg}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}

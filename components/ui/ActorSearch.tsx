@@ -68,9 +68,14 @@ export function ActorSearch({ onSelect, placeholder = 'Search for an actor...', 
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActiveIndex(i => Math.max(i - 1, -1))
-    } else if (e.key === 'Enter' && activeIndex >= 0) {
+    } else if (e.key === 'Enter') {
       e.preventDefault()
-      handleSelect(results[activeIndex])
+      if (activeIndex >= 0) {
+        handleSelect(results[activeIndex])
+      } else {
+        const exact = results.find(r => r.name.toLowerCase() === query.toLowerCase())
+        if (exact) handleSelect(exact)
+      }
     } else if (e.key === 'Escape') {
       setIsOpen(false)
     }
