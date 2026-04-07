@@ -296,12 +296,12 @@ export default function TriviaGamePage() {
           <p className="text-zinc-500 text-sm">Build a web of movies and actors linking these two stars. Shuffle either one if you want a different challenge.</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 mb-6">
           {(['start', 'end'] as const).map(slot => {
             const actor = slot === 'start' ? gameConfig.startActor : gameConfig.targetActor
             const isShuffling = shufflingSlot === slot
             return (
-              <div key={slot} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8 flex flex-col items-center gap-4">
+              <div key={slot} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-8 flex flex-col items-center gap-3 sm:gap-4">
                 <div className="text-zinc-500 text-xs uppercase tracking-wider">{slot === 'start' ? 'Start' : 'Goal'}</div>
                 <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-zinc-800 ring-2 ${slot === 'start' ? 'ring-amber-400' : 'ring-amber-500/60'}`}>
                   {actor.profile_path

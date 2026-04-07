@@ -57,7 +57,7 @@ export function FilmPicker({ actor, films, onSelect, isLoading = false }: FilmPi
         className="w-full bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
       />
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
         {filtered.map(film => (
           <FilmCard
             key={film.id}

@@ -273,7 +273,7 @@ export default function ActorPage({ params }: { params: Promise<{ id: string }> 
           {activeTab === 'filmography' && (
             <div>
               <h3 className="text-white font-semibold mb-3">Full Filmography</h3>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 max-h-[500px] overflow-y-auto pr-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 max-h-[500px] overflow-y-auto pr-2">
                 {[...validCredits]
                   .sort((a, b) => new Date(b.release_date).getTime() - new Date(a.release_date).getTime())
                   .map((film: Movie) => (
