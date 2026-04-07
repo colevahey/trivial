@@ -53,6 +53,123 @@ async function getMovieTitle(movieId: number): Promise<{ title: string; poster_p
   }
 }
 
+const MAX_DEPTH = 4
+
+export async function findPaths(fromActorId: number, toActorId: number, maxPaths = 8): Promise<PathNode[][]> {
+  if (fromActorId === toActorId) {
+    const info = await getActorName(fromActorId)
+    return [[{ type: 'actor', id: fromActorId, name: info.name, image: info.profile_path ? `${TMDB_IMAGE_BASE}${info.profile_path}` : null }]]
+  }
+
+  const movieCache = new Map<number, number[]>()
+  const castCache = new Map<number, { id: number; name: string; profile_path: string | null }[]>()
+  const forwardVisited = new Map<number, PathNode[]>()
+  const backwardVisited = new Map<number, PathNode[]>()
+
+  const fromInfo = await getActorName(fromActorId)
+  const toInfo = await getActorName(toActorId)
+
+  const fromNode: PathNode = { type: 'actor', id: fromActorId, name: fromInfo.name, image: fromInfo.profile_path ? `${TMDB_IMAGE_BASE}${fromInfo.profile_path}` : null }
+  const toNode: PathNode = { type: 'actor', id: toActorId, name: toInfo.name, image: toInfo.profile_path ? `${TMDB_IMAGE_BASE}${toInfo.profile_path}` : null }
+
+  forwardVisited.set(fromActorId, [fromNode])
+  backwardVisited.set(toActorId, [toNode])
+
+  const forwardQueue: BFSNode[] = [{ actorId: fromActorId, path: [fromNode] }]
+  const backwardQueue: BFSNode[] = [{ actorId: toActorId, path: [toNode] }]
+
+  const results: PathNode[][] = []
+  const seenSigs = new Set<string>()
+  let foundDepth: number | null = null
+
+  function addPath(path: PathNode[]) {
+    const sig = path.map(n => `${n.type}-${n.id}`).join('|')
+    if (!seenSigs.has(sig)) {
+      seenSigs.add(sig)
+      results.push(path)
+    }
+  }
+
+  for (let depth = 0; depth < MAX_DEPTH; depth++) {
+    if (foundDepth !== null && depth > foundDepth) break
+    if (results.length >= maxPaths) break
+
+    // Forward frontier
+    const forwardFrontier = [...forwardQueue]
+    forwardQueue.length = 0
+
+    for (const node of forwardFrontier) {
+      if (results.length >= maxPaths) break
+      if (node.path.length > depth + 1) continue
+      const movieIds = await getActorMovieIds(node.actorId, movieCache)
+
+      for (const movieId of movieIds) {
+        if (results.length >= maxPaths) break
+        const movieInfo = await getMovieTitle(movieId)
+        const movieNode: PathNode = { type: 'movie', id: movieId, name: movieInfo.title, image: movieInfo.poster_path ? `${TMDB_IMAGE_BASE}${movieInfo.poster_path}` : null }
+        const cast = await getMovieActorIds(movieId, castCache)
+
+        for (const actor of cast) {
+          if (results.length >= maxPaths) break
+          if (forwardVisited.has(actor.id)) continue
+
+          const newPath: PathNode[] = [...node.path, movieNode, { type: 'actor', id: actor.id, name: actor.name, image: actor.profile_path ? `${TMDB_IMAGE_BASE}${actor.profile_path}` : null }]
+          forwardVisited.set(actor.id, newPath)
+          forwardQueue.push({ actorId: actor.id, path: newPath })
+
+          if (backwardVisited.has(actor.id)) {
+            const backPath = backwardVisited.get(actor.id)!
+            addPath([...newPath, ...backPath.slice(0, -1).reverse()])
+            foundDepth = depth
+          } else if (actor.id === toActorId) {
+            addPath(newPath)
+            foundDepth = depth
+          }
+        }
+      }
+    }
+
+    if (results.length >= maxPaths) break
+
+    // Backward frontier
+    const backwardFrontier = [...backwardQueue]
+    backwardQueue.length = 0
+
+    for (const node of backwardFrontier) {
+      if (results.length >= maxPaths) break
+      if (node.path.length > depth + 1) continue
+      const movieIds = await getActorMovieIds(node.actorId, movieCache)
+
+      for (const movieId of movieIds) {
+        if (results.length >= maxPaths) break
+        const movieInfo = await getMovieTitle(movieId)
+        const movieNode: PathNode = { type: 'movie', id: movieId, name: movieInfo.title, image: movieInfo.poster_path ? `${TMDB_IMAGE_BASE}${movieInfo.poster_path}` : null }
+        const cast = await getMovieActorIds(movieId, castCache)
+
+        for (const actor of cast) {
+          if (results.length >= maxPaths) break
+          if (backwardVisited.has(actor.id)) continue
+
+          const newPath: PathNode[] = [...node.path, movieNode, { type: 'actor', id: actor.id, name: actor.name, image: actor.profile_path ? `${TMDB_IMAGE_BASE}${actor.profile_path}` : null }]
+          backwardVisited.set(actor.id, newPath)
+          backwardQueue.push({ actorId: actor.id, path: newPath })
+
+          if (forwardVisited.has(actor.id)) {
+            const fwdPath = forwardVisited.get(actor.id)!
+            addPath([...fwdPath, ...newPath.slice(0, -1).reverse()])
+            foundDepth = depth
+          } else if (actor.id === fromActorId) {
+            addPath([...newPath].reverse())
+            foundDepth = depth
+          }
+        }
+      }
+    }
+  }
+
+  return results
+}
+
 export async function findPath(fromActorId: number, toActorId: number): Promise<PathNode[]> {
   if (fromActorId === toActorId) {
     const info = await getActorName(fromActorId)
@@ -95,8 +212,6 @@ export async function findPath(fromActorId: number, toActorId: number): Promise<
 
   const forwardQueue: BFSNode[] = [{ actorId: fromActorId, path: [fromNode] }]
   const backwardQueue: BFSNode[] = [{ actorId: toActorId, path: [toNode] }]
-
-  const MAX_DEPTH = 4
 
   for (let depth = 0; depth < MAX_DEPTH; depth++) {
     // Process forward frontier

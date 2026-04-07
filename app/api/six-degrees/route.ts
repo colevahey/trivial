@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { findPath } from '@/lib/six-degrees'
+import { findPath, findPaths } from '@/lib/six-degrees'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { fromId, toId } = body
+    const { fromId, toId, maxPaths } = body
 
     if (!fromId || !toId || typeof fromId !== 'number' || typeof toId !== 'number') {
       return NextResponse.json({ error: 'fromId and toId must be numbers' }, { status: 400 })
+    }
+
+    if (typeof maxPaths === 'number' && maxPaths > 1) {
+      const paths = await findPaths(fromId, toId, maxPaths)
+      return NextResponse.json({ paths, path: paths[0] ?? [] })
     }
 
     const path = await findPath(fromId, toId)

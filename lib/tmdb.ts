@@ -117,7 +117,7 @@ export async function searchMulti(query: string) {
     `/search/multi?query=${encodeURIComponent(query)}&include_adult=false`
   )
   return data.results
-    .filter(r => r.media_type === 'person' || r.media_type === 'movie')
+    .filter(r => (r.media_type === 'person' && r.profile_path) || r.media_type === 'movie')
     .map(r => ({
       id: r.id,
       name: r.media_type === 'movie' ? (r.title ?? '') : (r.name ?? ''),

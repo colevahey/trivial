@@ -10,9 +10,16 @@ interface PathVisualizerProps {
 
 export function PathVisualizer({ path }: PathVisualizerProps) {
   const [visibleCount, setVisibleCount] = useState(0)
+  const [prevPath, setPrevPath] = useState(path)
+
+  // Reset synchronously during render so the browser never paints an
+  // intermediate frame where new images are visible before fading out.
+  if (path !== prevPath) {
+    setPrevPath(path)
+    setVisibleCount(0)
+  }
 
   useEffect(() => {
-    setVisibleCount(0)
     let i = 0
     const interval = setInterval(() => {
       i++

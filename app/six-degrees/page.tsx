@@ -12,7 +12,8 @@ function SixDegreesContent() {
 
   const [actorA, setActorA] = useState<SearchResult | null>(null)
   const [actorB, setActorB] = useState<SearchResult | null>(null)
-  const [path, setPath] = useState<PathNode[] | null>(null)
+  const [paths, setPaths] = useState<PathNode[][] | null>(null)
+  const [pathIndex, setPathIndex] = useState(0)
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fromActorLoaded, setFromActorLoaded] = useState(false)
@@ -41,23 +42,24 @@ function SixDegreesContent() {
   async function handleFind() {
     if (!actorA || !actorB) return
     setIsSearching(true)
-    setPath(null)
+    setPaths(null)
+    setPathIndex(0)
     setError(null)
 
     try {
       const res = await fetch('/api/six-degrees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromId: actorA.id, toId: actorB.id }),
+        body: JSON.stringify({ fromId: actorA.id, toId: actorB.id, maxPaths: 8 }),
       })
       const data = await res.json()
 
-      if (data.error && !data.path) {
+      if (data.error && !data.paths) {
         setError(data.error)
-      } else if (!data.path || data.path.length === 0) {
+      } else if (!data.paths || data.paths.length === 0) {
         setError(`No path found between ${actorA.name} and ${actorB.name} within 4 hops.`)
       } else {
-        setPath(data.path)
+        setPaths(data.paths)
       }
     } catch {
       setError('Something went wrong. Please try again.')
@@ -88,15 +90,15 @@ function SixDegreesContent() {
           <ActorSelector
             label="Actor A"
             selected={actorA}
-            onSelect={a => { setActorA(a); setPath(null); setError(null) }}
-            onClear={() => { setActorA(null); setPath(null); setError(null) }}
+            onSelect={a => { setActorA(a); setPaths(null); setError(null) }}
+            onClear={() => { setActorA(null); setPaths(null); setError(null) }}
           />
 
           <ActorSelector
             label="Actor B"
             selected={actorB}
-            onSelect={b => { setActorB(b); setPath(null); setError(null) }}
-            onClear={() => { setActorB(null); setPath(null); setError(null) }}
+            onSelect={b => { setActorB(b); setPaths(null); setError(null) }}
+            onClear={() => { setActorB(null); setPaths(null); setError(null) }}
           />
         </div>
 
@@ -123,7 +125,7 @@ function SixDegreesContent() {
 
           {(actorA || actorB) && (
             <button
-              onClick={() => { setActorA(null); setActorB(null); setPath(null); setError(null) }}
+              onClick={() => { setActorA(null); setActorB(null); setPaths(null); setError(null) }}
               className="sm:ml-auto text-zinc-600 hover:text-zinc-400 text-sm transition-colors"
             >
               Clear all
@@ -139,14 +141,40 @@ function SixDegreesContent() {
         </div>
       )}
 
-      {path && path.length > 0 && (
+      {paths && paths.length > 0 && (
         <div className="bg-zinc-900 border border-amber-500/20 rounded-2xl p-6">
-          <PathVisualizer path={path} />
+          <div className="flex items-center justify-between mb-5">
+            <button
+              onClick={() => setPathIndex(i => Math.max(0, i - 1))}
+              disabled={pathIndex === 0}
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-zinc-400 text-xs font-medium uppercase tracking-wider">Connection</span>
+              {paths.length > 1 && (
+                <span className="text-zinc-600 text-xs">{pathIndex + 1} of {paths.length}</span>
+              )}
+            </div>
+            <button
+              onClick={() => setPathIndex(i => Math.min(paths.length - 1, i + 1))}
+              disabled={pathIndex === paths.length - 1}
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+          <PathVisualizer path={paths[pathIndex]!} />
         </div>
       )}
 
       {/* How it works */}
-      {!path && !isSearching && (
+      {!paths && !isSearching && (
         <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { step: '1', title: 'Pick two actors', desc: 'Search for any two actors from TMDB\'s database of thousands of performers.' },

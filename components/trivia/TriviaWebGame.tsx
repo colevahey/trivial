@@ -63,7 +63,7 @@ function isConnected(nodes: WebNode[], edges: WebEdge[], aId: string, bId: strin
   return false
 }
 
-function findPathInWeb(nodes: WebNode[], edges: WebEdge[], startId: string, endId: string): PathStep[] | null {
+function findAllPathsInWeb(nodes: WebNode[], edges: WebEdge[], startId: string, endId: string, maxPaths = 6): PathStep[][] {
   const adj = new Map<string, string[]>()
   for (const n of nodes) adj.set(n.nodeId, [])
   for (const e of edges) {
@@ -71,38 +71,51 @@ function findPathInWeb(nodes: WebNode[], edges: WebEdge[], startId: string, endI
     adj.get(e.movieNodeId)?.push(e.actorNodeId)
   }
 
-  const visited = new Set([startId])
-  const startNode = nodes.find(n => n.nodeId === startId)
-  const queue: Array<{ id: string; path: PathStep[] }> = [{
-    id: startId,
-    path: [{
-      nodeId: startId,
-      type: 'actor',
-      name: startNode?.name ?? '',
-      image: startNode?.image ?? null,
-    }]
-  }]
-
-  while (queue.length) {
-    const { id, path } = queue.shift()!
-    if (id === endId) return path
-    for (const nb of adj.get(id) ?? []) {
-      if (!visited.has(nb)) {
-        visited.add(nb)
-        const node = nodes.find(n => n.nodeId === nb)
-        queue.push({
-          id: nb,
-          path: [...path, {
-            nodeId: nb,
-            type: node?.type ?? 'movie',
-            name: node?.name ?? '',
-            image: node?.image ?? null,
-          }]
-        })
+  // BFS to find minimum distance
+  const dist = new Map<string, number>([[startId, 0]])
+  const bfsQ = [startId]
+  while (bfsQ.length) {
+    const cur = bfsQ.shift()!
+    for (const nb of adj.get(cur) ?? []) {
+      if (!dist.has(nb)) {
+        dist.set(nb, dist.get(cur)! + 1)
+        bfsQ.push(nb)
       }
     }
   }
-  return null
+  const minDist = dist.get(endId)
+  if (minDist === undefined) return []
+
+  // BFS collecting all paths of exactly minDist length (no node revisit within a single path)
+  const startNode = nodes.find(n => n.nodeId === startId)
+  const results: PathStep[][] = []
+  const seenSigs = new Set<string>()
+
+  const queue: Array<{ id: string; path: PathStep[]; visited: Set<string> }> = [{
+    id: startId,
+    path: [{ nodeId: startId, type: 'actor', name: startNode?.name ?? '', image: startNode?.image ?? null }],
+    visited: new Set([startId]),
+  }]
+
+  while (queue.length && results.length < maxPaths) {
+    const { id, path, visited } = queue.shift()!
+    if (id === endId) {
+      const sig = path.map(p => p.nodeId).join('|')
+      if (!seenSigs.has(sig)) { seenSigs.add(sig); results.push(path) }
+      continue
+    }
+    if (path.length - 1 >= minDist) continue
+    for (const nb of adj.get(id) ?? []) {
+      if (visited.has(nb)) continue
+      const node = nodes.find(n => n.nodeId === nb)
+      queue.push({
+        id: nb,
+        path: [...path, { nodeId: nb, type: node?.type ?? 'movie', name: node?.name ?? '', image: node?.image ?? null }],
+        visited: new Set([...visited, nb]),
+      })
+    }
+  }
+  return results
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -112,6 +125,7 @@ interface TriviaWebGameProps {
   endActor: Actor
   optimalLength: number
   onRestart: () => void
+  isDaily?: boolean
 }
 
 interface PathStep {
@@ -121,7 +135,7 @@ interface PathStep {
   image: string | null
 }
 
-export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }: TriviaWebGameProps) {
+export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart, isDaily }: TriviaWebGameProps) {
   const startNodeId = `actor-${startActor.id}`
   const endNodeId   = `actor-${endActor.id}`
 
@@ -144,8 +158,11 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
   const [addedCount, setAddedCount] = useState(0)
   const [toast, setToast]   = useState<{ message: string; ok: boolean } | null>(null)
   const [isAdding, setIsAdding] = useState(false)
-  const [userPath, setUserPath] = useState<PathStep[] | null>(null)
-  const [optimalPath, setOptimalPath] = useState<PathNode[] | null>(null)
+  const [userPaths, setUserPaths] = useState<PathStep[][] | null>(null)
+  const [userPathIndex, setUserPathIndex] = useState(0)
+  const [optimalPaths, setOptimalPaths] = useState<PathNode[][] | null>(null)
+  const [optimalPathIndex, setOptimalPathIndex] = useState(0)
+  const [copied, setCopied] = useState(false)
 
   const svgRef       = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -199,16 +216,17 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
         flash(`Added "${result.name}"`, true)
 
         if (isConnected(nextNodes, nextEdges, startNodeId, endNodeId)) {
-          const path = findPathInWeb(nextNodes, nextEdges, startNodeId, endNodeId)
-          setUserPath(path)
+          setUserPaths(findAllPathsInWeb(nextNodes, nextEdges, startNodeId, endNodeId))
+          setUserPathIndex(0)
 
           const optRes = await fetch('/api/six-degrees', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fromId: startActor.id, toId: endActor.id }),
+            body: JSON.stringify({ fromId: startActor.id, toId: endActor.id, maxPaths: 8 }),
           })
           const optData = await optRes.json()
-          setOptimalPath(optData.path)
+          setOptimalPaths(optData.paths ?? (optData.path?.length ? [optData.path] : null))
+          setOptimalPathIndex(0)
 
           setStatus('won')
         }
@@ -240,16 +258,17 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
       flash(`Added "${result.name}"`, true)
 
       if (isConnected(nextNodes, nextEdges, startNodeId, endNodeId)) {
-        const path = findPathInWeb(nextNodes, nextEdges, startNodeId, endNodeId)
-        setUserPath(path)
+        setUserPaths(findAllPathsInWeb(nextNodes, nextEdges, startNodeId, endNodeId))
+        setUserPathIndex(0)
 
         const optRes = await fetch('/api/six-degrees', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fromId: startActor.id, toId: endActor.id }),
+          body: JSON.stringify({ fromId: startActor.id, toId: endActor.id, maxPaths: 8 }),
         })
         const optData = await optRes.json()
-        setOptimalPath(optData.path)
+        setOptimalPaths(optData.paths ?? (optData.path?.length ? [optData.path] : null))
+        setOptimalPathIndex(0)
 
         setStatus('won')
       }
@@ -325,11 +344,12 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
 
     simRef.current = simulation
 
-    const userPathSet = new Set(userPath?.map(p => p.nodeId) ?? [])
+    const activeUserPath = userPaths?.[userPathIndex] ?? null
+    const userPathSet = new Set(activeUserPath?.map(p => p.nodeId) ?? [])
     const userPathEdges = new Set<string>()
-    for (let i = 0; i < (userPath?.length ?? 0) - 1; i++) {
-      const a = userPath![i].nodeId
-      const b = userPath![i + 1].nodeId
+    for (let i = 0; i < (activeUserPath?.length ?? 0) - 1; i++) {
+      const a = activeUserPath![i].nodeId
+      const b = activeUserPath![i + 1].nodeId
       userPathEdges.add(`${a}-${b}`)
       userPathEdges.add(`${b}-${a}`)
     }
@@ -478,12 +498,41 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
     }) // end requestAnimationFrame
 
     return () => { cancelAnimationFrame(raf); cleanup?.() }
-  }, [nodes, edges, startNodeId, endNodeId, userPath])
+  }, [nodes, edges, startNodeId, endNodeId, userPaths, userPathIndex])
 
   // ── Win screen ────────────────────────────────────────────────────────────
 
   const optimalNodes = 2 * optimalLength - 1
   const score = Math.max(0, 1000 - Math.max(0, addedCount - optimalNodes) * 100)
+
+  async function handleShare() {
+    const pathEmojis = (userPaths?.[userPathIndex] ?? [])
+      .slice(1, -1)
+      .map(step => step.type === 'movie' ? '🎬' : '⭐')
+      .join('')
+    const isPerfect = addedCount <= optimalNodes
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const label = isDaily ? `Trivial 🎬 ${dateStr}` : `Trivial 🎬`
+    const text = [
+      label,
+      `${startActor.name} → ${endActor.name}`,
+      '',
+      `${pathEmojis || '🎬'}${isPerfect ? ' ✨' : ''}`,
+      `${score}/1000`,
+    ].join('\n')
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ text })
+      } else {
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }
+    } catch {
+      // user cancelled share or clipboard unavailable
+    }
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -569,15 +618,39 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
       {status === 'won' && (
         <>
           {/* Paths comparison */}
-          {userPath && optimalPath && (
+          {userPaths && optimalPaths && (
             <div className="space-y-4">
+              {/* Your path */}
               <div className="bg-zinc-900 border border-amber-500/30 rounded-2xl p-6">
-                <div className="text-center mb-4">
-                  <span className="inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-400 px-4 py-1.5 rounded-full text-sm font-semibold">
-                    Your Path
-                  </span>
+                <div className="flex items-center justify-between mb-4">
+                  <button
+                    onClick={() => setUserPathIndex(i => Math.max(0, i - 1))}
+                    disabled={userPathIndex === 0}
+                    className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/30 text-amber-400 px-4 py-1.5 rounded-full text-sm font-semibold">
+                      Your Path
+                    </span>
+                    {userPaths.length > 1 && (
+                      <span className="text-zinc-600 text-xs">{userPathIndex + 1} of {userPaths.length}</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setUserPathIndex(i => Math.min(userPaths.length - 1, i + 1))}
+                    disabled={userPathIndex === userPaths.length - 1}
+                    className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 </div>
-                <PathVisualizer path={userPath.map((step) => {
+                <PathVisualizer path={userPaths[userPathIndex]!.map((step) => {
                   const numId = step.nodeId.split('-')[1]
                   return {
                     type: step.type,
@@ -588,13 +661,37 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
                 })} />
               </div>
 
+              {/* Optimal path */}
               <div className="bg-zinc-900 border border-zinc-700/30 rounded-2xl p-6">
-                <div className="text-center mb-4">
-                  <span className="inline-flex items-center gap-2 bg-zinc-700/30 border border-zinc-700 text-zinc-400 px-4 py-1.5 rounded-full text-sm font-semibold">
-                    Optimal Path
-                  </span>
+                <div className="flex items-center justify-between mb-4">
+                  <button
+                    onClick={() => setOptimalPathIndex(i => Math.max(0, i - 1))}
+                    disabled={optimalPathIndex === 0}
+                    className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="inline-flex items-center gap-2 bg-zinc-700/30 border border-zinc-700 text-zinc-400 px-4 py-1.5 rounded-full text-sm font-semibold">
+                      Optimal Path
+                    </span>
+                    {optimalPaths.length > 1 && (
+                      <span className="text-zinc-600 text-xs">{optimalPathIndex + 1} of {optimalPaths.length}</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setOptimalPathIndex(i => Math.min(optimalPaths.length - 1, i + 1))}
+                    disabled={optimalPathIndex === optimalPaths.length - 1}
+                    className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 </div>
-                <PathVisualizer path={optimalPath} />
+                <PathVisualizer path={optimalPaths[optimalPathIndex]!} />
               </div>
             </div>
           )}
@@ -616,12 +713,34 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart }
             </div>
           </div>
 
-          <button
-            onClick={onRestart}
-            className="w-full px-6 py-3 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-bold rounded-xl transition-colors"
-          >
-            Play Again
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleShare}
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-xl transition-colors"
+            >
+              {copied ? (
+                <>
+                  <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  Share
+                </>
+              )}
+            </button>
+            <button
+              onClick={onRestart}
+              className="flex-1 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-bold rounded-xl transition-colors"
+            >
+              Play Again
+            </button>
+          </div>
         </>
       )}
     </div>

@@ -51,12 +51,90 @@ const SEED_ACTOR_IDS = [
   1373737,  // Florence Pugh
 ]
 
+// ── Seeded RNG (mulberry32) ───────────────────────────────────────────────────
+
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), seed | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function getDailySeed(): number {
+  const now = new Date()
+  const dateStr = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`
+  let hash = 0
+  for (let i = 0; i < dateStr.length; i++) {
+    hash = (Math.imul(31, hash) + dateStr.charCodeAt(i)) | 0
+  }
+  return hash
+}
+
+function seededShuffle<T>(arr: T[], rand: () => number): T[] {
+  const result = [...arr]
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[result[i], result[j]] = [result[j]!, result[i]!]
+  }
+  return result
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 type PageState = 'loading' | 'setup' | 'playing' | 'error'
+type GameMode = 'daily' | 'custom'
 
 interface GameConfig {
   startActor: Actor
   targetActor: Actor
   optimalLength: number
+}
+
+// ── Pair finders ──────────────────────────────────────────────────────────────
+
+async function findDailyPair(): Promise<GameConfig | null> {
+  const rand = mulberry32(getDailySeed())
+  const shuffled = seededShuffle([...SEED_ACTOR_IDS], rand)
+
+  for (let i = 0; i < shuffled.length - 1; i++) {
+    const fromId = shuffled[i]
+    const toId = shuffled[i + 1]
+    if (!fromId || !toId) continue
+
+    try {
+      const pathRes = await fetch('/api/six-degrees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromId, toId }),
+      })
+      const pathData = await pathRes.json()
+      if (!pathData.path?.length) continue
+
+      const path: PathNode[] = pathData.path
+      const optimalLength = Math.floor((path.length - 1) / 2)
+      if (optimalLength < 2 || optimalLength > 4) continue
+
+      const [fromRes, toRes] = await Promise.all([
+        fetch(`/api/actor/${fromId}`),
+        fetch(`/api/actor/${toId}`),
+      ])
+      if (!fromRes.ok || !toRes.ok) continue
+
+      const [startActor, targetActor]: [Actor, Actor] = await Promise.all([
+        fromRes.json(),
+        toRes.json(),
+      ])
+      if (!startActor.id || !targetActor.id) continue
+
+      return { startActor, targetActor, optimalLength }
+    } catch {
+      continue
+    }
+  }
+  return null
 }
 
 async function findValidPair(
@@ -137,11 +215,14 @@ async function findActorForSlot(
   return null
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function TriviaGamePage() {
   const [pageState, setPageState]     = useState<PageState>('loading')
   const [gameConfig, setGameConfig]   = useState<GameConfig | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [gameKey, setGameKey]         = useState(0)
+  const [gameMode, setGameMode]       = useState<GameMode>('daily')
   const [shufflingSlot, setShufflingSlot] = useState<'start' | 'end' | null>(null)
   const [shufflingBoth, setShufflingBoth] = useState(false)
   const [searchingSlot, setSearchingSlot] = useState<'start' | 'end' | null>(null)
@@ -151,8 +232,9 @@ export default function TriviaGamePage() {
     setPageState('loading')
     setErrorMessage('')
     setGameConfig(null)
+    setGameMode('daily')
 
-    const config = await findValidPair()
+    const config = await findDailyPair()
     if (config) {
       setGameConfig(config)
       setPageState('setup')
@@ -167,6 +249,7 @@ export default function TriviaGamePage() {
   async function handleShuffleBoth() {
     if (shufflingSlot || shufflingBoth) return
     setShufflingBoth(true)
+    setGameMode('custom')
     const config = await findValidPair()
     if (config) setGameConfig(config)
     setShufflingBoth(false)
@@ -175,6 +258,7 @@ export default function TriviaGamePage() {
   async function handleShuffleSlot(slot: 'start' | 'end') {
     if (!gameConfig || shufflingSlot || shufflingBoth) return
     setShufflingSlot(slot)
+    setGameMode('custom')
 
     const keepId = slot === 'start' ? gameConfig.targetActor.id : gameConfig.startActor.id
     const result = await findActorForSlot(keepId)
@@ -194,6 +278,7 @@ export default function TriviaGamePage() {
     setSlotError(null)
     setSearchingSlot(null)
     setShufflingSlot(slot)
+    setGameMode('custom')
 
     const otherId = slot === 'start' ? gameConfig.targetActor.id : gameConfig.startActor.id
     const newId = result.id
@@ -210,6 +295,7 @@ export default function TriviaGamePage() {
 
       if (!path.length || optimalLength < 2 || optimalLength > 4) {
         setSlotError({ slot, msg: `No valid 2–4 hop path found. Try a different actor.` })
+        setGameMode(prev => prev)  // restore previous mode
       } else {
         const actor: Actor = {
           id: result.id, name: result.name,
@@ -239,6 +325,8 @@ export default function TriviaGamePage() {
     setPageState('loading')
     initGame()
   }
+
+  const dailyDateLabel = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
   // ── Loading ───────────────────────────────────────────────────────────────
 
@@ -292,6 +380,23 @@ export default function TriviaGamePage() {
         </div>
 
         <div className="text-center mb-10">
+          {gameMode === 'daily' ? (
+            <div className="inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/20 text-amber-400 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-4">
+              🎬 Daily Challenge · {dailyDateLabel}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-1.5 mb-4">
+              <div className="inline-flex items-center gap-2 bg-zinc-800 border border-zinc-700 text-zinc-400 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider">
+                Custom Game
+              </div>
+              <button
+                onClick={initGame}
+                className="text-zinc-500 hover:text-amber-400 text-xs transition-colors"
+              >
+                Return to daily challenge
+              </button>
+            </div>
+          )}
           <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">Connect the dots</h2>
           <p className="text-zinc-500 text-sm">Build a web of movies and actors linking these two stars. Shuffle either one if you want a different challenge.</p>
         </div>
@@ -403,6 +508,7 @@ export default function TriviaGamePage() {
         endActor={gameConfig.targetActor}
         optimalLength={gameConfig.optimalLength}
         onRestart={handleRestart}
+        isDaily={gameMode === 'daily'}
       />
     </div>
   )
