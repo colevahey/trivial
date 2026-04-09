@@ -286,7 +286,7 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart, 
 
     // Delay measurement by one frame to ensure container is fully laid out
     const raf = requestAnimationFrame(() => {
-      let width  = container.clientWidth  || 600
+      let width  = container.clientWidth  || Math.min(window.innerWidth - 32, 600)
       const height = container.clientHeight || 380
 
       simRef.current?.stop()
