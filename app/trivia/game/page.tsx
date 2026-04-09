@@ -115,7 +115,7 @@ async function findDailyPair(): Promise<GameConfig | null> {
 
       const path: PathNode[] = pathData.path
       const optimalLength = Math.floor((path.length - 1) / 2)
-      if (optimalLength < 2 || optimalLength > 4) continue
+      if (optimalLength < 2 || optimalLength > 5) continue
 
       const [fromRes, toRes] = await Promise.all([
         fetch(`/api/actor/${fromId}`),
@@ -141,11 +141,24 @@ async function findValidPair(
   excludeIds: number[] = []
 ): Promise<GameConfig | null> {
   const pool = SEED_ACTOR_IDS.filter(id => !excludeIds.includes(id))
-  const shuffled = [...pool].sort(() => Math.random() - 0.5)
 
-  for (let i = 0; i < shuffled.length - 1; i++) {
-    const fromId = shuffled[i]
-    const toId   = shuffled[i + 1]
+  // Build a shuffled list of random non-consecutive index pairs
+  const indices = pool.map((_, i) => i)
+  const pairs: [number, number][] = []
+  for (let i = 0; i < indices.length; i++) {
+    for (let j = i + 1; j < indices.length; j++) {
+      pairs.push([i, j])
+    }
+  }
+  // Fisher-Yates shuffle the pairs
+  for (let i = pairs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[pairs[i], pairs[j]] = [pairs[j]!, pairs[i]!]
+  }
+
+  for (const [ai, bi] of pairs) {
+    const fromId = pool[ai]
+    const toId   = pool[bi]
     if (!fromId || !toId) continue
 
     try {
@@ -159,7 +172,7 @@ async function findValidPair(
 
       const path: PathNode[] = pathData.path
       const optimalLength = Math.floor((path.length - 1) / 2)
-      if (optimalLength < 2 || optimalLength > 4) continue
+      if (optimalLength < 2 || optimalLength > 5) continue
 
       const [fromRes, toRes] = await Promise.all([
         fetch(`/api/actor/${fromId}`),
@@ -183,10 +196,15 @@ async function findValidPair(
 
 async function findActorForSlot(
   keepId: number,
-  attempts = 6
+  attempts = 15
 ): Promise<{ actor: Actor; optimalLength: number } | null> {
   const pool = SEED_ACTOR_IDS.filter(id => id !== keepId)
-  const shuffled = [...pool].sort(() => Math.random() - 0.5)
+  // Fisher-Yates shuffle
+  const shuffled = [...pool]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!]
+  }
 
   for (let i = 0; i < Math.min(attempts, shuffled.length); i++) {
     const newId = shuffled[i]
@@ -200,7 +218,7 @@ async function findActorForSlot(
       if (!pathData.path?.length) continue
 
       const optimalLength = Math.floor((pathData.path.length - 1) / 2)
-      if (optimalLength < 2 || optimalLength > 4) continue
+      if (optimalLength < 2 || optimalLength > 5) continue
 
       const actorRes = await fetch(`/api/actor/${newId}`)
       if (!actorRes.ok) continue
@@ -293,7 +311,7 @@ export default function TriviaGamePage() {
       const path: PathNode[] = pathData.path ?? []
       const optimalLength = Math.floor((path.length - 1) / 2)
 
-      if (!path.length || optimalLength < 2 || optimalLength > 4) {
+      if (!path.length || optimalLength < 2 || optimalLength > 5) {
         setSlotError({ slot, msg: `No valid 2–4 hop path found. Try a different actor.` })
         setGameMode(prev => prev)  // restore previous mode
       } else {
