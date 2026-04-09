@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import type { PathNode } from '@/lib/types'
 
@@ -9,25 +8,6 @@ interface PathVisualizerProps {
 }
 
 export function PathVisualizer({ path }: PathVisualizerProps) {
-  const [visibleCount, setVisibleCount] = useState(0)
-  const [prevPath, setPrevPath] = useState(path)
-
-  // Reset synchronously during render so the browser never paints an
-  // intermediate frame where new images are visible before fading out.
-  if (path !== prevPath) {
-    setPrevPath(path)
-    setVisibleCount(0)
-  }
-
-  useEffect(() => {
-    let i = 0
-    const interval = setInterval(() => {
-      i++
-      setVisibleCount(i)
-      if (i >= path.length) clearInterval(interval)
-    }, 300)
-    return () => clearInterval(interval)
-  }, [path])
 
   const degrees = Math.floor((path.length - 1) / 2)
 
@@ -47,12 +27,7 @@ export function PathVisualizer({ path }: PathVisualizerProps) {
           {path.map((node, index) => (
             <div key={`${node.type}-${node.id}-${index}`} className="flex items-center">
               {/* Node */}
-              <div
-                className={`flex flex-col items-center transition-all duration-500 py-2 ${
-                  index < visibleCount ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                }`}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
+              <div className="flex flex-col items-center py-2">
                 {node.type === 'actor' ? (
                   <div className="flex flex-col items-center gap-1.5">
                     <div className={`w-14 h-14 sm:w-20 sm:h-20 rounded-full overflow-hidden ring-2 ${
@@ -120,12 +95,7 @@ export function PathVisualizer({ path }: PathVisualizerProps) {
 
               {/* Connector arrow */}
               {index < path.length - 1 && (
-                <div
-                  className={`flex items-center px-0.5 sm:px-1 transition-all duration-500 ${
-                    index + 1 < visibleCount ? 'opacity-100' : 'opacity-0'
-                  }`}
-                  style={{ transitionDelay: `${(index + 0.5) * 100}ms` }}
-                >
+                <div className="flex items-center px-0.5 sm:px-1">
                   <div className="flex items-center gap-0.5 text-zinc-600">
                     <div className="w-2 sm:w-4 h-px bg-zinc-700" />
                     <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="currentColor" viewBox="0 0 20 20">
