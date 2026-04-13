@@ -90,7 +90,7 @@ export function TriviaGame({ startActor, targetActor, optimalLength, onRestart }
     setPath(newPath)
 
     if (actor.id === targetActor.id) {
-      const finalScore = Math.max(0, 1000 - (newSteps - optimalLength) * 100)
+      const finalScore = Math.max(0, 100 - (newSteps - optimalLength) * 5)
       setScore(finalScore)
       setStatus('won')
       return

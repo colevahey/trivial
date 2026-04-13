@@ -503,7 +503,7 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart, 
   // ── Win screen ────────────────────────────────────────────────────────────
 
   const optimalNodes = 2 * optimalLength - 1
-  const score = Math.max(0, 1000 - Math.max(0, addedCount - optimalNodes) * 100)
+  const score = Math.max(0, 100 - Math.max(0, addedCount - optimalNodes) * 5)
 
   async function handleShare() {
     const pathEmojis = (userPaths?.[userPathIndex] ?? [])
@@ -518,7 +518,7 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart, 
       `${startActor.name} → ${endActor.name}`,
       '',
       `⭐${pathEmojis || '🎬'}⭐${isPerfect ? ' ✨' : ''}`,
-      `${score}/1000`,
+      `${score}/100`,
     ].join('\n')
 
     try {

@@ -37,8 +37,8 @@ export default function TriviaLandingPage() {
             },
             {
               num: '4',
-              title: 'Score: 1000 − 100 × extra steps',
-              desc: 'Your score starts at 1000 and decreases by 100 for each step beyond the optimal path. Perfect play scores 1000!',
+              title: 'Score: 100 − 5 × extra steps',
+              desc: 'Your score starts at 100 and decreases by 5 for each step beyond the optimal path. Perfect play scores 100!',
             },
           ].map(rule => (
             <div key={rule.num} className="flex gap-4">
@@ -57,8 +57,8 @@ export default function TriviaLandingPage() {
       {/* Scoring breakdown */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
         {[
-          { label: 'Perfect', score: '1000', desc: 'Optimal path', color: 'text-amber-400' },
-          { label: 'Good', score: '700+', desc: '3 extra steps', color: 'text-emerald-400' },
+          { label: 'Perfect', score: '100', desc: 'Optimal path', color: 'text-amber-400' },
+          { label: 'Good', score: '85+', desc: '3 extra steps', color: 'text-emerald-400' },
           { label: 'Any finish', score: '>0', desc: 'Just get there', color: 'text-zinc-400' },
         ].map(tier => (
           <div key={tier.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
