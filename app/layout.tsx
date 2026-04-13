@@ -59,6 +59,12 @@ export default function RootLayout({
                 >
                   Trivia
                 </Link>
+                <Link
+                  href="/trivia/actor"
+                  className="px-3 py-1.5 text-zinc-400 hover:text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition-colors"
+                >
+                  Actor Trivia
+                </Link>
               </nav>
             </div>
           </div>
