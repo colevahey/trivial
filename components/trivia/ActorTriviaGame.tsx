@@ -74,11 +74,12 @@ function medalEmoji(score: number): string {
 
 // ── Film Search ──────────────────────────────────────────────────────────────
 
-function FilmSearch({ films, value, onChange, disabled }: {
+function FilmSearch({ films, value, onChange, disabled, onAutoSubmit }: {
   films: Film[]
   value: Film | null
   onChange: (f: Film | null) => void
   disabled: boolean
+  onAutoSubmit?: () => void
 }) {
   const [query, setQuery] = useState(value?.title ?? '')
   const [open, setOpen] = useState(false)
@@ -106,7 +107,12 @@ function FilmSearch({ films, value, onChange, disabled }: {
         onKeyDown={e => {
           if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h + 1, filtered.length - 1)) }
           if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h - 1, 0)) }
-          if (e.key === 'Enter' && filtered[hi]) pick(filtered[hi])
+          if (e.key === 'Enter') {
+            if (filtered[hi]) {
+              pick(filtered[hi])
+              setTimeout(() => onAutoSubmit?.(), 100)
+            }
+          }
           if (e.key === 'Escape') setOpen(false)
         }}
         placeholder="Type a film title..."
@@ -171,15 +177,26 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
   const byRating = [...films].sort((a, b) => b.vote_average - a.vote_average)
 
   // ── Questions ────────────────────────────────────────────────────────────
-  const allQuestions = [
+  const allQuestions: Array<{
+    key: string
+    label: string
+    question: string
+    hint: string
+    available: boolean
+    input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean, onAutoSubmit?: () => void) => React.ReactNode
+    score: (val: Answer) => number
+    rankSummary: (val: Answer) => string
+    answerLabel: (val: Answer) => string
+    reveal: (val: Answer) => React.ReactNode
+  }> = [
     {
       key: 'highestGrossing' as const,
       label: 'Highest-Grossing Film',
       question: `What is ${actor.name}'s highest-grossing film?`,
       hint: `Based on ${byRevenue.length} films with box office data`,
       available: byRevenue.length >= 3,
-      input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean) =>
-        <FilmSearch films={byRevenue} value={val as Film | null} onChange={onChange} disabled={disabled} />,
+      input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean, onAutoSubmit?: () => void) =>
+        <FilmSearch films={byRevenue} value={val as Film | null} onChange={onChange} disabled={disabled} onAutoSubmit={onAutoSubmit} />,
       score: (val: Answer) => scoreRank(val as Film | null, byRevenue),
       rankSummary: (val: Answer) => {
         const film = val as Film | null
@@ -202,10 +219,21 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
       question: `What year did ${actor.name} make their first film?`,
       hint: '±2 years = strong · 2 points per year off',
       available: firstFilm !== null,
-      input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean) =>
-        <input type="number" min="1900" max="2030" value={(val as string) ?? ''} disabled={disabled}
-          onChange={e => onChange(e.target.value)} placeholder="e.g. 1987"
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500 text-sm disabled:opacity-60 disabled:cursor-not-allowed" />,
+      input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean, onAutoSubmit?: () => void) => {
+        const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+          if (e.key === 'Enter') {
+            const y = parseInt(e.currentTarget.value)
+            if (!isNaN(y) && y >= 1900 && y <= 2030) {
+              onAutoSubmit?.()
+            }
+          }
+        }
+        return (
+          <input type="number" min="1900" max="2030" value={(val as string) ?? ''} disabled={disabled}
+            onChange={e => onChange(e.target.value)} onKeyDown={handleKeyDown} placeholder="e.g. 1987"
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500 text-sm disabled:opacity-60 disabled:cursor-not-allowed" />
+        )
+      },
       score: (val: Answer) => firstFilm ? scoreYear(val as string, firstFilm.year) : 0,
       rankSummary: (val: Answer) => {
         if (!firstFilm) return '—'
@@ -229,8 +257,8 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
       question: `What is ${actor.name}'s highest-rated film?`,
       hint: 'By TMDB user rating',
       available: byRating.length >= 3,
-      input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean) =>
-        <FilmSearch films={byRating} value={val as Film | null} onChange={onChange} disabled={disabled} />,
+      input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean, onAutoSubmit?: () => void) =>
+        <FilmSearch films={byRating} value={val as Film | null} onChange={onChange} disabled={disabled} onAutoSubmit={onAutoSubmit} />,
       score: (val: Answer) => scoreRank(val as Film | null, byRating),
       rankSummary: (val: Answer) => {
         const film = val as Film | null
@@ -253,10 +281,21 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
       question: `How many of ${actor.name}'s films have a TMDB rating of 7.0 or above?`,
       hint: 'Enter a number',
       available: films.length >= 3,
-      input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean) =>
-        <input type="number" min="0" value={(val as string) ?? ''} disabled={disabled}
-          onChange={e => onChange(e.target.value)} placeholder="Number of films..."
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500 text-sm disabled:opacity-60 disabled:cursor-not-allowed" />,
+      input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean, onAutoSubmit?: () => void) => {
+        const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+          if (e.key === 'Enter') {
+            const n = parseInt(e.currentTarget.value)
+            if (!isNaN(n) && n >= 0) {
+              onAutoSubmit?.()
+            }
+          }
+        }
+        return (
+          <input type="number" min="0" value={(val as string) ?? ''} disabled={disabled}
+            onChange={e => onChange(e.target.value)} onKeyDown={handleKeyDown} placeholder="Number of films..."
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500 text-sm disabled:opacity-60 disabled:cursor-not-allowed" />
+        )
+      },
       score: (val: Answer) => scoreCount(val as string, criticalCount),
       rankSummary: (val: Answer) => {
         const n = parseInt(val as string)
@@ -279,10 +318,21 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
       question: `What is ${actor.name}'s combined box office total?`,
       hint: `Based on ${revenueFilmCount} films · enter in dollars`,
       available: byRevenue.length >= 3,
-      input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean) =>
-        <input type="number" min="0" value={(val as string) ?? ''} disabled={disabled}
-          onChange={e => onChange(e.target.value)} placeholder="Total in dollars..."
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500 text-sm disabled:opacity-60 disabled:cursor-not-allowed" />,
+      input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean, onAutoSubmit?: () => void) => {
+        const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+          if (e.key === 'Enter') {
+            const n = parseInt(e.currentTarget.value)
+            if (!isNaN(n) && n > 0) {
+              onAutoSubmit?.()
+            }
+          }
+        }
+        return (
+          <input type="number" min="0" value={(val as string) ?? ''} disabled={disabled}
+            onChange={e => onChange(e.target.value)} onKeyDown={handleKeyDown} placeholder="Total in dollars..."
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500 text-sm disabled:opacity-60 disabled:cursor-not-allowed" />
+        )
+      },
       score: (val: Answer) => scoreRevenue(val as string, totalRevenue),
       rankSummary: (val: Answer) => {
         const n = parseInt(val as string)
@@ -414,14 +464,7 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
                 <div className="text-white font-semibold text-sm">{q.question}</div>
                 <div className="text-zinc-600 text-xs mt-1">{q.hint}</div>
               </div>
-              {q.input(currentInputs[idx], (val) => handleInputChange(idx, val), false)}
-              <button
-                disabled={!canSubmit(idx)}
-                onClick={() => handleSubmit(idx)}
-                className="w-full mt-3.5 py-2.5 rounded-lg font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-amber-500 hover:bg-amber-400 text-zinc-900"
-              >
-                Submit Answer
-              </button>
+              {q.input(currentInputs[idx], (val) => handleInputChange(idx, val), false, () => handleSubmit(idx))}
             </div>
           )
         })}
