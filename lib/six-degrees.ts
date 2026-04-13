@@ -10,7 +10,7 @@ async function getActorMovieIds(actorId: number, movieCache: Map<number, number[
   if (movieCache.has(actorId)) return movieCache.get(actorId)!
   const credits = await getPersonMovieCredits(actorId)
   const ids = credits
-    .filter(m => m.release_date && m.vote_average > 0)
+    .filter(m => m.release_date && m.vote_average > 0 && !m.genre_ids.includes(99) && !m.genre_ids.includes(10770))
     .sort((a, b) => b.vote_average - a.vote_average)
     .slice(0, 20)
     .map(m => m.id)

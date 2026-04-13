@@ -55,7 +55,7 @@ export default function TriviaLandingPage() {
       </div>
 
       {/* Scoring breakdown */}
-      <div className="grid grid-cols-3 gap-3 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
         {[
           { label: 'Perfect', score: '1000', desc: 'Optimal path', color: 'text-amber-400' },
           { label: 'Good', score: '700+', desc: '3 extra steps', color: 'text-emerald-400' },

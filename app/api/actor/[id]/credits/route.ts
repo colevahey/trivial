@@ -12,7 +12,8 @@ export async function GET(
   }
 
   try {
-    const credits = await getPersonMovieCredits(actorId)
+    const allCredits = await getPersonMovieCredits(actorId)
+    const credits = allCredits.filter(m => !m.genre_ids.includes(99) && !m.genre_ids.includes(10770))
 
     // Enrich top 25 films (by popularity) with revenue + director.
     const top25 = [...credits]

@@ -517,7 +517,7 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart, 
       label,
       `${startActor.name} → ${endActor.name}`,
       '',
-      `${pathEmojis || '🎬'}${isPerfect ? ' ✨' : ''}`,
+      `⭐${pathEmojis || '🎬'}⭐${isPerfect ? ' ✨' : ''}`,
       `${score}/1000`,
     ].join('\n')
 
@@ -581,7 +581,7 @@ export function TriviaWebGame({ startActor, endActor, optimalLength, onRestart, 
           <svg ref={svgRef} className="w-full h-full" />
 
           {toast && (
-            <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium pointer-events-none transition-all ${
+            <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 max-w-[90vw] text-center px-4 py-2 rounded-lg text-sm font-medium pointer-events-none transition-all ${
               toast.ok
                 ? 'bg-zinc-800 text-zinc-200 border border-zinc-600'
                 : 'bg-red-950 text-red-300 border border-red-800'

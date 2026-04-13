@@ -102,6 +102,15 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Daily Challenge banner */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <a href="/trivia/game" className="block w-full bg-amber-500/10 border border-amber-500/30 hover:border-amber-400/60 rounded-2xl p-5 text-center transition-colors group">
+          <div className="text-amber-400 text-sm font-medium mb-1">🎬 Daily Challenge</div>
+          <div className="text-white text-lg font-bold group-hover:text-amber-100 transition-colors">Play Today's Trivia</div>
+          <div className="text-zinc-400 text-sm mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+        </a>
+      </div>
+
       {/* Feature cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-16">

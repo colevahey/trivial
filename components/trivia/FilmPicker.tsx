@@ -16,7 +16,7 @@ export function FilmPicker({ actor, films, onSelect, isLoading = false }: FilmPi
   const [filter, setFilter] = useState('')
 
   const sorted = films
-    .filter(m => m.release_date && m.vote_average > 0)
+    .filter(m => m.release_date && m.vote_average > 0 && !m.genre_ids?.includes(99) && !m.genre_ids?.includes(10770))
     .sort((a, b) => b.vote_average - a.vote_average)
 
   const filtered = filter
