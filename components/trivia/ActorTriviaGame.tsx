@@ -277,9 +277,7 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
       key: 'totalRevenue' as const,
       label: 'Total Box Office',
       question: `What is ${actor.name}'s combined box office total?`,
-      hint: revenueFilmCount < filmCount
-        ? `Based on ${revenueFilmCount} of ${filmCount} films · enter in dollars`
-        : 'Enter in dollars (e.g. 3500000000)',
+      hint: `Based on ${revenueFilmCount} films · enter in dollars`,
       available: byRevenue.length >= 3,
       input: (val: Answer, onChange: (v: Answer) => void, disabled: boolean) =>
         <input type="number" min="0" value={(val as string) ?? ''} disabled={disabled}
@@ -310,23 +308,30 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [answers, setAnswers] = useState<(Answer | null)[]>(Array(total).fill(null))
-  const [currentInput, setCurrentInput] = useState<Answer>(null)
+  const [currentInputs, setCurrentInputs] = useState<(Answer | null)[]>(Array(total).fill(null))
   const [expanded, setExpanded] = useState<number | null>(null)
-  const [activeIdx, setActiveIdx] = useState(0)
 
   const scores = allQuestions.map((q, i) => q.score(answers[i]))
   const totalScore = scores.reduce((a, b) => a + b, 0)
-  const isDone = activeIdx === total
+  const allAnswered = answers.every(a => a !== null && a !== '')
+  const isDone = allAnswered
 
-  function handleSubmit() {
+  function handleSubmit(idx: number) {
     const newAnswers = [...answers]
-    newAnswers[activeIdx] = currentInput
+    newAnswers[idx] = currentInputs[idx]
     setAnswers(newAnswers)
-    setCurrentInput(null)
-    setActiveIdx(i => i + 1)
+    const newInputs = [...currentInputs]
+    newInputs[idx] = null
+    setCurrentInputs(newInputs)
   }
 
-  const canSubmit = currentInput !== null && currentInput !== ''
+  function handleInputChange(idx: number, val: Answer) {
+    const newInputs = [...currentInputs]
+    newInputs[idx] = val
+    setCurrentInputs(newInputs)
+  }
+
+  const canSubmit = (idx: number) => currentInputs[idx] !== null && currentInputs[idx] !== ''
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -365,9 +370,7 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
       {/* Question cards */}
       <div className="space-y-2">
         {allQuestions.map((q, idx) => {
-          const isAnswered = idx < activeIdx
-          const isActive = idx === activeIdx
-          const isUpcoming = idx > activeIdx
+          const isAnswered = answers[idx] !== null && answers[idx] !== ''
           const score = scores[idx]
           const isExpanded = expanded === idx
 
@@ -403,39 +406,24 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
             )
           }
 
-          if (isActive) {
-            return (
-              <div key={q.key} className="border border-amber-500/40 bg-zinc-900/80 rounded-xl p-4 ring-1 ring-amber-500/20">
-                <div className="mb-3">
-                  <div className="text-amber-400 text-xs font-semibold mb-1">Q{idx + 1} of {total}</div>
-                  <div className="text-white font-semibold text-sm">{q.question}</div>
-                  <div className="text-zinc-600 text-xs mt-1">{q.hint}</div>
-                </div>
-                {q.input(currentInput, setCurrentInput, false)}
-                <button
-                  disabled={!canSubmit}
-                  onClick={handleSubmit}
-                  className="w-full mt-3.5 py-2.5 rounded-lg font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-amber-500 hover:bg-amber-400 text-zinc-900"
-                >
-                  Submit Answer
-                </button>
+          // Unanswered question card
+          return (
+            <div key={q.key} className="border border-amber-500/40 bg-zinc-900/80 rounded-xl p-4 ring-1 ring-amber-500/20">
+              <div className="mb-3">
+                <div className="text-amber-400 text-xs font-semibold mb-1">Q{idx + 1} of {total}</div>
+                <div className="text-white font-semibold text-sm">{q.question}</div>
+                <div className="text-zinc-600 text-xs mt-1">{q.hint}</div>
               </div>
-            )
-          }
-
-          if (isUpcoming) {
-            return (
-              <div key={q.key} className="border border-zinc-800 bg-zinc-900/50 rounded-xl p-3.5 opacity-50">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-xs text-zinc-600 font-medium">Q{idx + 1}</div>
-                    <div className="text-zinc-500 text-xs mt-1">{q.label}</div>
-                  </div>
-                  <span className="text-lg flex-shrink-0">🔒</span>
-                </div>
-              </div>
-            )
-          }
+              {q.input(currentInputs[idx], (val) => handleInputChange(idx, val), false)}
+              <button
+                disabled={!canSubmit(idx)}
+                onClick={() => handleSubmit(idx)}
+                className="w-full mt-3.5 py-2.5 rounded-lg font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-amber-500 hover:bg-amber-400 text-zinc-900"
+              >
+                Submit Answer
+              </button>
+            </div>
+          )
         })}
       </div>
 
