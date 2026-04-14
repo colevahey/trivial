@@ -27,7 +27,7 @@ export default function ActorTriviaLandingPage() {
   }, [])
 
   function handleSelect(result: SearchResult) {
-    if (result.mediaType === 'person') {
+    if (!result.mediaType || result.mediaType === 'person') {
       router.push(`/trivia/actor/${result.id}`)
     }
   }

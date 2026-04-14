@@ -118,6 +118,7 @@ export function ActorSearch({ onSelect, placeholder = 'Search for an actor...', 
             const isMovie = result.mediaType === 'movie'
             return (
               <button
+                type="button"
                 key={`${result.mediaType ?? 'person'}-${result.id}`}
                 onClick={() => handleSelect(result)}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
