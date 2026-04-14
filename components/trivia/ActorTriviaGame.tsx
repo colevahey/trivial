@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb'
+import { getDailyDateLabel } from '@/lib/daily-seed'
 
 interface Film {
   id: number
@@ -170,7 +171,7 @@ function Top5Films({ films, picked, statKey }: {
 
 type Answer = Film | string | null
 
-export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
+export function ActorTriviaGame({ data, isDaily }: { data: ActorTriviaData; isDaily?: boolean }) {
   const { actor, films, filmCount, highestGrossing, highestRated, firstFilm, totalRevenue, criticalCount, revenueFilmCount } = data
 
   const byRevenue = [...films].filter(m => m.revenue > 0).sort((a, b) => b.revenue - a.revenue)
@@ -393,6 +394,12 @@ export function ActorTriviaGame({ data }: { data: ActorTriviaData }) {
   return (
     <div className="w-screen px-4 sm:px-6 py-6 space-y-3 flex flex-col items-center">
       <div className="w-full max-w-2xl space-y-3">
+      {/* Daily Badge */}
+      {isDaily && (
+        <div className="inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/20 text-amber-400 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider w-full justify-center">
+          🎬 Daily Challenge · {getDailyDateLabel()}
+        </div>
+      )}
       {/* Header */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
         <div className="flex items-center gap-3">

@@ -1,12 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, use } from 'react'
 import { useParams } from 'next/navigation'
 import { ActorTriviaGame, type ActorTriviaData } from '@/components/trivia/ActorTriviaGame'
 
-export default function ActorTriviaGamePage() {
+export default function ActorTriviaGamePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ daily?: string }>
+}) {
   const params = useParams()
   const id = params.id as string
+  const resolvedSearchParams = use(searchParams)
+  const isDaily = resolvedSearchParams.daily === 'true'
   const [data, setData] = useState<ActorTriviaData | null>(null)
   const [error, setError] = useState(false)
 
@@ -57,5 +63,5 @@ export default function ActorTriviaGamePage() {
     )
   }
 
-  return <ActorTriviaGame data={data} />
+  return <ActorTriviaGame data={data} isDaily={isDaily} />
 }
