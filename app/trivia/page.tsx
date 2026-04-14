@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 export default function TriviaLandingPage() {
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-16 text-center">
       {/* Icon */}
       <div className="w-20 h-20 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-8">
         <svg className="w-10 h-10 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

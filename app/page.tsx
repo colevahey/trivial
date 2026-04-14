@@ -61,7 +61,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-20 text-center">
+        <div className="relative w-full px-4 sm:px-6 py-20 text-center">
           <div className="inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-medium mb-6">
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -103,7 +103,7 @@ export default function HomePage() {
       </div>
 
       {/* Daily Challenge banner */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <a href="/trivia/game" className="block w-full bg-amber-500/10 border border-amber-500/30 hover:border-amber-400/60 rounded-2xl p-5 text-center transition-colors group">
           <div className="text-amber-400 text-sm font-medium mb-1">🎬 Daily Challenge</div>
           <div className="text-white text-lg font-bold group-hover:text-amber-100 transition-colors">Play Today's Trivia</div>
@@ -112,7 +112,7 @@ export default function HomePage() {
       </div>
 
       {/* Feature cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-16">
           {[
             {

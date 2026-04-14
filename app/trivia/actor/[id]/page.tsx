@@ -23,7 +23,7 @@ export default function ActorTriviaGamePage() {
 
   if (error) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+      <div className="w-full px-4 py-16 text-center">
         <div className="text-zinc-400 text-lg mb-4">Failed to load actor data.</div>
         <a href="/trivia/actor" className="text-amber-400 hover:text-amber-300 text-sm">
           ← Back to actor search
@@ -34,7 +34,7 @@ export default function ActorTriviaGamePage() {
 
   if (!data) {
     return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+      <div className="w-full px-4 sm:px-6 py-8 space-y-4">
         {/* Header skeleton */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
           <div className="flex items-center gap-4">

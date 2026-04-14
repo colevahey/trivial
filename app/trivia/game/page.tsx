@@ -350,7 +350,7 @@ export default function TriviaGamePage() {
 
   if (pageState === 'loading') {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 text-center">
+      <div className="w-full px-4 sm:px-6 py-16 text-center">
         <div className="flex flex-col items-center gap-6">
           <div className="w-16 h-16 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
           <div>
@@ -364,7 +364,7 @@ export default function TriviaGamePage() {
 
   if (pageState === 'error') {
     return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
+      <div className="w-full px-4 sm:px-6 py-16 text-center">
         <div className="text-5xl mb-4">⚠️</div>
         <h2 className="text-2xl font-bold text-white mb-2">Setup Failed</h2>
         <p className="text-zinc-500 mb-6 text-sm">{errorMessage || 'Could not initialize game.'}</p>
@@ -387,7 +387,7 @@ export default function TriviaGamePage() {
   if (pageState === 'setup') {
     const anyShuffling = !!shufflingSlot || shufflingBoth
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+      <div className="w-full px-4 sm:px-6 py-12">
         <div className="flex items-center justify-between mb-8">
           <Link href="/trivia" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 text-sm transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -504,7 +504,7 @@ export default function TriviaGamePage() {
   // ── Playing ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
       <div className="flex items-center justify-between mb-6">
         <Link href="/trivia" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 text-sm transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
