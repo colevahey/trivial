@@ -10,9 +10,10 @@ interface ActorSearchProps {
   placeholder?: string
   className?: string
   personOnly?: boolean
+  compact?: boolean
 }
 
-export function ActorSearch({ onSelect, placeholder = 'Search for an actor...', className = '', personOnly = false }: ActorSearchProps) {
+export function ActorSearch({ onSelect, placeholder = 'Search for an actor...', className = '', personOnly = false, compact = false }: ActorSearchProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -98,7 +99,7 @@ export function ActorSearch({ onSelect, placeholder = 'Search for an actor...', 
           onKeyDown={handleKeyDown}
           onFocus={() => results.length > 0 && setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-4 py-3 pr-10 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
+          className={`w-full bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-4 pr-10 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${compact ? 'py-1.5 text-sm' : 'py-3'}`}
         />
         {isLoading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
