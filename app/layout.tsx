@@ -67,6 +67,15 @@ export default function RootLayout({
                 >
                   Actor Trivia
                 </Link>
+                <Link
+                  href="/watchlist"
+                  className="px-3 py-1.5 text-zinc-400 hover:text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition-colors flex items-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  </svg>
+                  Watchlist
+                </Link>
               </nav>
             </div>
           </div>

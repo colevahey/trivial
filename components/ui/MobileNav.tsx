@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { href: '/six-degrees', label: 'Six Degrees' },
   { href: '/trivia', label: 'Trivia' },
   { href: '/trivia/actor', label: 'Actor Trivia' },
+  { href: '/watchlist', label: 'Watchlist' },
 ]
 
 export function MobileNav() {

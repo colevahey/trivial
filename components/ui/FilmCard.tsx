@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb'
 import type { Movie } from '@/lib/types'
+import { WatchlistButton } from '@/components/ui/WatchlistButton'
 
 interface FilmCardProps {
   movie: Movie
@@ -11,9 +12,10 @@ interface FilmCardProps {
   selected?: boolean
   showCharacter?: boolean
   href?: string
+  showWatchlist?: boolean
 }
 
-export function FilmCard({ movie, onClick, selected, showCharacter = false, href }: FilmCardProps) {
+export function FilmCard({ movie, onClick, selected, showCharacter = false, href, showWatchlist = true }: FilmCardProps) {
   const year = movie.release_date ? new Date(movie.release_date).getFullYear() : null
 
   const card = (
@@ -61,6 +63,12 @@ export function FilmCard({ movie, onClick, selected, showCharacter = false, href
             <svg className="w-3 h-3 text-zinc-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
+          </div>
+        )}
+
+        {showWatchlist && (
+          <div className="absolute bottom-2 right-2">
+            <WatchlistButton movie={movie} />
           </div>
         )}
       </div>
