@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb'
 import { useMovieDetail } from '@/hooks/useMovieDetail'
 import { useMovieCredits } from '@/hooks/useMovieCredits'
+import { useWatchlist } from '@/hooks/useWatchlist'
 import { ActorCard } from '@/components/ui/ActorCard'
 import type { Credit } from '@/lib/types'
 
@@ -15,6 +16,7 @@ export default function MoviePage({ params }: { params: Promise<{ id: string }> 
 
   const { movie, isLoading: movieLoading } = useMovieDetail(movieId)
   const { cast, crew, isLoading: castLoading } = useMovieCredits(movieId)
+  const { isInWatchlist, toggle } = useWatchlist()
   const director = crew.find(c => c.job === 'Director')
 
   if (movieLoading) {
@@ -107,6 +109,28 @@ export default function MoviePage({ params }: { params: Promise<{ id: string }> 
               <p className="text-zinc-400 italic text-sm mt-1">&ldquo;{movie.tagline}&rdquo;</p>
             )}
           </div>
+
+          <button
+            onClick={() => toggle(movie)}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-150 active:scale-95 mb-5 ${
+              isInWatchlist(movie.id)
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-400 hover:bg-amber-500/25'
+                : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-amber-500/40 hover:text-amber-400'
+            }`}
+          >
+            <svg
+              className="w-4 h-4 flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill={isInWatchlist(movie.id) ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            {isInWatchlist(movie.id) ? 'Saved to watchlist' : 'Add to watchlist'}
+          </button>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {stats.map(stat => (
