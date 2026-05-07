@@ -299,7 +299,7 @@ export default function TriviaGamePage() {
           <button onClick={initGame} className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-bold rounded-xl transition-colors">
             Try Again
           </button>
-          <Link href="/trivia" className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl transition-colors">
+          <Link href="/games" className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl transition-colors">
             Back
           </Link>
         </div>
@@ -316,11 +316,11 @@ export default function TriviaGamePage() {
     return (
       <div className="w-full px-4 sm:px-6 py-12">
         <div className="flex items-center justify-between mb-8">
-          <Link href="/trivia" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 text-sm transition-colors">
+          <Link href="/games" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 text-sm transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            Trivia
+            Games
           </Link>
         </div>
 

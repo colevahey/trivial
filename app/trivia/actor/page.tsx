@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ActorSearch } from '@/components/ui/ActorSearch'
 import { SEED_ACTOR_IDS, getDailySeed, mulberry32, getDailyDateLabel } from '@/lib/daily-seed'
@@ -36,6 +37,14 @@ export default function ActorTriviaLandingPage() {
 
   return (
     <div className="w-full px-4 sm:px-6 py-16 text-center">
+      <div className="flex justify-start mb-8">
+        <Link href="/games" className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-300 text-sm transition-colors">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Games
+        </Link>
+      </div>
       {/* Daily Challenge Banner */}
       <a
         href="#"
@@ -67,7 +76,7 @@ export default function ActorTriviaLandingPage() {
           </svg>
         </div>
 
-        <h2 className="text-5xl font-black text-white mb-4">Choose an Actor</h2>
+        <h2 className="text-5xl font-black text-white mb-4">Career Quiz</h2>
         <p className="text-zinc-400 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
           How well do you know an actor's career? Guess their highest-grossing film, debut year, ratings, and more. Score based on how close you get.
         </p>

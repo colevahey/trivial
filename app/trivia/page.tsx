@@ -3,6 +3,14 @@ import Link from 'next/link'
 export default function TriviaLandingPage() {
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-16 text-center">
+      <div className="flex justify-start mb-8">
+        <Link href="/games" className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-300 text-sm transition-colors">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Games
+        </Link>
+      </div>
       {/* Icon */}
       <div className="w-20 h-20 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-8">
         <svg className="w-10 h-10 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -10,7 +18,7 @@ export default function TriviaLandingPage() {
         </svg>
       </div>
 
-      <h1 className="text-5xl font-black text-white mb-4">Six Degrees Trivia</h1>
+      <h1 className="text-5xl font-black text-white mb-4">Movie Path Game</h1>
       <p className="text-zinc-400 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
         Can you connect two actors in the fewest steps? Pick films and co-stars to build the path manually. Score based on how close you get to the optimal route.
       </p>
@@ -71,7 +79,7 @@ export default function TriviaLandingPage() {
 
       <Link
         href="/trivia/game"
-        className="inline-flex items-center gap-3 px-10 py-4 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-black text-lg rounded-2xl transition-colors shadow-lg shadow-amber-900/30"
+        className="inline-flex items-center gap-3 px-10 py-4 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-black text-lg rounded-2xl transition-colors shadow-lg shadow-amber-900/30 mb-4"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
