@@ -12,6 +12,10 @@ const NAV_LINKS = [
   { href: '/watchlist', label: 'Watchlist' },
 ]
 
+const BOTTOM_LINKS = [
+  { href: '/about', label: 'About' },
+]
+
 export function MobileNav() {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -91,6 +95,23 @@ export function MobileNav() {
                   {label}
                 </Link>
               ))}
+
+              <div className="mt-auto pt-4 border-t border-zinc-800">
+                {BOTTOM_LINKS.map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setOpen(false)}
+                    className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors block ${
+                      pathname === href
+                        ? 'bg-amber-500/15 text-amber-400'
+                        : 'text-zinc-500 hover:text-white hover:bg-zinc-800'
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
             </nav>
           </div>
         </>,

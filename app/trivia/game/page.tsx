@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { TriviaWebGame } from '@/components/trivia/TriviaWebGame'
 import { ActorSearch } from '@/components/ui/ActorSearch'
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb'
-import { SEED_ACTOR_IDS, getDailySeed, mulberry32, seededShuffle, getDailyDateLabel } from '@/lib/daily-seed'
+import { SEED_ACTOR_IDS, getDailyDateLabel } from '@/lib/daily-seed'
 import type { Actor, PathNode, SearchResult } from '@/lib/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -23,45 +23,15 @@ interface GameConfig {
 // ── Pair finders ──────────────────────────────────────────────────────────────
 
 async function findDailyPair(): Promise<GameConfig | null> {
-  const rand = mulberry32(getDailySeed())
-  const shuffled = seededShuffle([...SEED_ACTOR_IDS], rand)
-
-  for (let i = 0; i < shuffled.length - 1; i++) {
-    const fromId = shuffled[i]
-    const toId = shuffled[i + 1]
-    if (!fromId || !toId) continue
-
-    try {
-      const pathRes = await fetch('/api/six-degrees', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromId, toId }),
-      })
-      const pathData = await pathRes.json()
-      if (!pathData.path?.length) continue
-
-      const path: PathNode[] = pathData.path
-      const optimalLength = Math.floor((path.length - 1) / 2)
-      if (optimalLength < 2 || optimalLength > 5) continue
-
-      const [fromRes, toRes] = await Promise.all([
-        fetch(`/api/actor/${fromId}`),
-        fetch(`/api/actor/${toId}`),
-      ])
-      if (!fromRes.ok || !toRes.ok) continue
-
-      const [startActor, targetActor]: [Actor, Actor] = await Promise.all([
-        fromRes.json(),
-        toRes.json(),
-      ])
-      if (!startActor.id || !targetActor.id) continue
-
-      return { startActor, targetActor, optimalLength }
-    } catch {
-      continue
-    }
+  try {
+    const res = await fetch('/api/daily-path')
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!data.startActor?.id || !data.targetActor?.id) return null
+    return { startActor: data.startActor, targetActor: data.targetActor, optimalLength: data.optimalLength }
+  } catch {
+    return null
   }
-  return null
 }
 
 async function findValidPair(

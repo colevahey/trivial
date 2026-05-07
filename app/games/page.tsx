@@ -8,13 +8,18 @@ import { TMDB_IMAGE_BASE } from '@/lib/tmdb'
 import type { Actor } from '@/lib/types'
 
 export default function GamesPage() {
-  const [dailyActor, setDailyActor] = useState<Actor | null>(null)
+  const [dailyQuizActor, setDailyQuizActor] = useState<Actor | null>(null)
+  const [dailyPath, setDailyPath] = useState<{ startActor: Actor; targetActor: Actor } | null>(null)
   const dateLabel = getDailyDateLabel()
 
   useEffect(() => {
     const rand = mulberry32(getDailySeed())
     const id = SEED_ACTOR_IDS[Math.floor(rand() * SEED_ACTOR_IDS.length)]
-    fetch(`/api/actor/${id}`).then(r => r.json()).then(setDailyActor).catch(() => {})
+    fetch(`/api/actor/${id}`).then(r => r.json()).then(setDailyQuizActor).catch(() => {})
+
+    fetch('/api/daily-path').then(r => r.json()).then(d => {
+      if (d.startActor?.id) setDailyPath(d)
+    }).catch(() => {})
   }, [])
 
   return (
@@ -28,10 +33,15 @@ export default function GamesPage() {
 
         {/* ── Movie Path Game ─────────────────────────────────────────────── */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
-          <div className="bg-amber-500/10 border-b border-amber-500/20 px-5 py-3 flex items-center gap-2">
+          <div className="bg-amber-500/10 border-b border-amber-500/25 px-5 py-3 flex items-center gap-2">
             <span className="text-amber-400 text-xs font-semibold uppercase tracking-wider">Daily Challenge</span>
             <span className="text-zinc-600 text-xs">·</span>
             <span className="text-zinc-500 text-xs">{dateLabel}</span>
+            {dailyPath && (
+              <span className="ml-auto text-amber-300/80 text-xs font-medium truncate max-w-[160px]">
+                {dailyPath.startActor.name} → {dailyPath.targetActor.name}
+              </span>
+            )}
           </div>
 
           <div className="p-6 flex flex-col flex-1">
@@ -73,18 +83,23 @@ export default function GamesPage() {
 
         {/* ── Career Quiz ─────────────────────────────────────────────────── */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
-          <div className="bg-amber-500/10 border-b border-amber-500/20 px-5 py-3 flex items-center gap-2">
+          <div className="bg-amber-500/10 border-b border-amber-500/25 px-5 py-3 flex items-center gap-2">
             <span className="text-amber-400 text-xs font-semibold uppercase tracking-wider">Daily Challenge</span>
             <span className="text-zinc-600 text-xs">·</span>
             <span className="text-zinc-500 text-xs">{dateLabel}</span>
-            {dailyActor?.profile_path && (
-              <div className="ml-auto w-6 h-6 rounded-full overflow-hidden ring-1 ring-amber-400/30 flex-shrink-0">
-                <Image
-                  src={`${TMDB_IMAGE_BASE}${dailyActor.profile_path}`}
-                  alt={dailyActor.name}
-                  width={24} height={24}
-                  className="w-full h-full object-cover"
-                />
+            {dailyQuizActor && (
+              <div className="ml-auto flex items-center gap-1.5">
+                {dailyQuizActor.profile_path && (
+                  <div className="w-6 h-6 rounded-full overflow-hidden ring-1 ring-amber-400/30 flex-shrink-0">
+                    <Image
+                      src={`${TMDB_IMAGE_BASE}${dailyQuizActor.profile_path}`}
+                      alt={dailyQuizActor.name}
+                      width={24} height={24}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <span className="text-amber-300/80 text-xs font-medium truncate max-w-[120px]">{dailyQuizActor.name}</span>
               </div>
             )}
           </div>
@@ -114,12 +129,12 @@ export default function GamesPage() {
               ))}
             </ul>
 
-            {dailyActor ? (
+            {dailyQuizActor ? (
               <Link
-                href={`/trivia/actor/${dailyActor.id}?daily=true`}
+                href={`/trivia/actor/${dailyQuizActor.id}?daily=true`}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-bold text-sm rounded-xl transition-colors mb-2"
               >
-                <span className="truncate">Quiz: {dailyActor.name}</span>
+                <span className="truncate">Quiz: {dailyQuizActor.name}</span>
               </Link>
             ) : (
               <div className="flex items-center justify-center px-4 py-2.5 bg-amber-500/20 text-amber-500/40 font-bold text-sm rounded-xl mb-2">

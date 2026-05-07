@@ -70,6 +70,12 @@ export default function RootLayout({
                   </svg>
                   Watchlist
                 </Link>
+                <Link
+                  href="/about"
+                  className="px-3 py-1.5 text-zinc-400 hover:text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition-colors"
+                >
+                  About
+                </Link>
               </nav>
             </div>
           </div>

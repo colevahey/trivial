@@ -13,11 +13,11 @@ export default function HomePage() {
   const router = useRouter()
   const [recentSearches, setRecentSearches] = useState<SearchResult[]>([])
   const [featuredActors, setFeaturedActors] = useState<Actor[]>([])
-  const [dailyActor, setDailyActor] = useState<Actor | null>(null)
+  const [dailyQuizActor, setDailyQuizActor] = useState<Actor | null>(null)
+  const [dailyPath, setDailyPath] = useState<{ startActor: Actor; targetActor: Actor } | null>(null)
   const dateLabel = getDailyDateLabel()
 
   useEffect(() => {
-    // Featured actors
     Promise.allSettled(FEATURED_IDS.map(id => fetch(`/api/actor/${id}`).then(r => r.json())))
       .then(results => {
         setFeaturedActors(
@@ -25,10 +25,13 @@ export default function HomePage() {
         )
       })
 
-    // Daily Career Quiz actor
     const rand = mulberry32(getDailySeed())
     const id = SEED_ACTOR_IDS[Math.floor(rand() * SEED_ACTOR_IDS.length)]
-    fetch(`/api/actor/${id}`).then(r => r.json()).then(setDailyActor).catch(() => {})
+    fetch(`/api/actor/${id}`).then(r => r.json()).then(setDailyQuizActor).catch(() => {})
+
+    fetch('/api/daily-path').then(r => r.json()).then(d => {
+      if (d.startActor?.id) setDailyPath(d)
+    }).catch(() => {})
   }, [])
 
   function handleSelect(result: SearchResult) {
@@ -123,39 +126,43 @@ export default function HomePage() {
             {/* Movie Path Game daily */}
             <a
               href="/trivia/game"
-              className="flex items-center gap-4 bg-zinc-900 border border-zinc-800 hover:border-amber-500/30 rounded-2xl p-4 transition-colors group"
+              className="flex items-center gap-4 bg-amber-500/10 border border-amber-500/25 hover:border-amber-400/50 hover:bg-amber-500/15 rounded-2xl p-4 transition-colors group"
             >
-              <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-white font-semibold text-sm group-hover:text-amber-100 transition-colors">Movie Path Game</div>
-                <div className="text-zinc-500 text-xs mt-0.5">Connect two actors in fewest steps</div>
+                <div className="text-amber-400 text-xs font-semibold uppercase tracking-wider mb-0.5">Movie Path Game</div>
+                <div className="text-white font-semibold text-sm group-hover:text-amber-100 transition-colors truncate">
+                  {dailyPath
+                    ? `${dailyPath.startActor.name} → ${dailyPath.targetActor.name}`
+                    : 'Loading today\'s pair…'}
+                </div>
               </div>
-              <svg className="w-4 h-4 text-zinc-600 group-hover:text-amber-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-amber-500/50 group-hover:text-amber-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </a>
 
             {/* Career Quiz daily */}
             <a
-              href={dailyActor ? `/trivia/actor/${dailyActor.id}?daily=true` : '/trivia/actor'}
-              className="flex items-center gap-4 bg-zinc-900 border border-zinc-800 hover:border-amber-500/30 rounded-2xl p-4 transition-colors group"
+              href={dailyQuizActor ? `/trivia/actor/${dailyQuizActor.id}?daily=true` : '/trivia/actor'}
+              className="flex items-center gap-4 bg-amber-500/10 border border-amber-500/25 hover:border-amber-400/50 hover:bg-amber-500/15 rounded-2xl p-4 transition-colors group"
             >
-              <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-white font-semibold text-sm group-hover:text-amber-100 transition-colors">Career Quiz</div>
-                <div className="text-zinc-500 text-xs mt-0.5 truncate">
-                  {dailyActor ? `Today: ${dailyActor.name}` : 'Loading…'}
+                <div className="text-amber-400 text-xs font-semibold uppercase tracking-wider mb-0.5">Career Quiz</div>
+                <div className="text-white font-semibold text-sm group-hover:text-amber-100 transition-colors truncate">
+                  {dailyQuizActor ? dailyQuizActor.name : 'Loading…'}
                 </div>
               </div>
-              <svg className="w-4 h-4 text-zinc-600 group-hover:text-amber-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-amber-500/50 group-hover:text-amber-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </a>
